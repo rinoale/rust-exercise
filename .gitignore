@@ -1,0 +1,18 @@
+# Rust build artifacts
+target/
+debug/
+release/
+
+# Standalone binaries from `rustc main.rs`
+/main
+/main.exe
+
+# Rustfmt backup files
+**/*.rs.bk
+
+# MSVC debug symbols
+*.pdb
+
+# Keep Cargo.lock for binary/application crates. Uncomment only for a
+# library-only repo where downstream users should resolve dependencies.
+# Cargo.lock
