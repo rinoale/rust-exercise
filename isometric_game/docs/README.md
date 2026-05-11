@@ -8,6 +8,10 @@ This folder tracks the planning documents for the Rust and Bevy 2.5D isometric t
 - [Concept Reference](concept-reference.md): distilled design reference from the earlier Unity project note.
 - [Milestones](milestones.md): staged roadmap and progress checklist with acceptance criteria.
 - [Technical Foundation](technical-foundation.md): Bevy architecture plan for the isometric 2.5D foundation.
+- [Asset Guidelines](asset-guidelines.md): naming, anchor, size, collision, and depth rules for 2.5D assets.
+- [Texture Atlas Plan](texture-atlas-plan.md): runtime atlas grouping, metadata, packing, and Bevy import direction.
+- [Visual Upgrade Plan](visual-upgrade-plan.md): sprite, animation, building art, prop, and visual feedback milestones.
+- [Dev Playback](dev-playback.md): scripted runtime smoke tests for movement, interactions, and visual debug wiring.
 
 ## Current Direction
 

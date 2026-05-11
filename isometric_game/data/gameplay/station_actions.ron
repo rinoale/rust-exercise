@@ -1,0 +1,46 @@
+[
+    (
+        station: Pantry,
+        label: "Restock pantry",
+        cooldown_seconds: 6.0,
+        changes: [
+            (resource: Scraps, amount: -2),
+            (resource: Food, amount: 3),
+            (resource: TradeGoods, amount: 1),
+        ],
+        success_notice: "Pantry stocked from sealed tins and barter bundles.",
+    ),
+    (
+        station: WaterStill,
+        label: "Filter water",
+        cooldown_seconds: 5.0,
+        changes: [
+            (resource: Scraps, amount: -1),
+            (resource: Water, amount: 2),
+        ],
+        success_notice: "The still coughs up clean water.",
+    ),
+    (
+        station: Stove,
+        label: "Warm the room",
+        cooldown_seconds: 8.0,
+        changes: [
+            (resource: Food, amount: -1),
+            (resource: Water, amount: -1),
+            (resource: Warmth, amount: 2),
+            (resource: Morale, amount: 1),
+        ],
+        success_notice: "A hot pot steadies the room.",
+    ),
+    (
+        station: Radio,
+        label: "Scan for rumors",
+        cooldown_seconds: 10.0,
+        changes: [
+            (resource: Scraps, amount: -1),
+            (resource: Rumors, amount: 2),
+            (resource: Threat, amount: -6),
+        ],
+        success_notice: "Static clears into useful road talk.",
+    ),
+]

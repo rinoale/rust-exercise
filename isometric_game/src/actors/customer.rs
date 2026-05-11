@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::config::{CHARACTER_Y_OFFSET, CUSTOMER_LIMIT, CUSTOMER_SPEED};
+use crate::config::{CUSTOMER_LIMIT, CUSTOMER_SPEED};
 use crate::gameplay::{Order, TavernState};
-use crate::rendering::character_sprite;
+use crate::rendering::{character_sprite, character_y_offset};
 use crate::universe::{distance_grid, iso_translation, GridPosition, IsoRenderable, UniverseLayer};
 use crate::world::TavernMap;
 
@@ -66,18 +66,22 @@ pub(super) fn spawn_customers(
         2 => "characters/wounded.png",
         _ => "characters/traveler.png",
     };
-    let order = match rng.gen_range(0..3) {
+    let order = match rng.gen_range(0..6) {
         0 => Order::Meal,
         1 => Order::Drink,
-        _ => Order::Both,
+        2 => Order::Both,
+        3 => Order::Shelter,
+        4 => Order::Rumor,
+        _ => Order::Trade,
     };
     let layer = UniverseLayer::Character;
+    let y_offset = character_y_offset();
 
     commands.spawn((
         character_sprite(asset_server.load(character)),
         GridPosition::new(spawn),
-        IsoRenderable::new(CHARACTER_Y_OFFSET, layer),
-        Transform::from_translation(iso_translation(spawn, CHARACTER_Y_OFFSET, layer, 0.0)),
+        IsoRenderable::new(y_offset, layer),
+        Transform::from_translation(iso_translation(spawn, y_offset, layer, 0.0)),
         Customer {
             target,
             state: CustomerState::Entering,

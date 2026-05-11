@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::actors::{Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
-use crate::gameplay::{DirtySpill, Station, TavernState};
+use crate::gameplay::{DirtySpill, Station, StationActionCatalog, StationCooldown, TavernState};
 use crate::universe::{distance_grid, DebugSettings, GridPosition};
 
 #[derive(Component)]
@@ -62,40 +62,63 @@ pub(super) fn update_ui(
     tavern_state: Res<TavernState>,
     player_query: Query<&GridPosition, With<Player>>,
     customers: Query<(&Customer, &GridPosition)>,
-    stations: Query<(&Station, &GridPosition)>,
+    stations: Query<(&Station, &StationCooldown, &GridPosition)>,
     spills: Query<(&DirtySpill, &GridPosition)>,
+    station_actions: Res<StationActionCatalog>,
     mut hud_text: Query<&mut Text, With<HudText>>,
     mut prompt_text: Query<&mut Text, (With<PromptText>, Without<HudText>)>,
 ) {
     if let Ok(mut text) = hud_text.get_single_mut() {
+        let total_guests = customers.iter().count();
+        let waiting_guests = customers
+            .iter()
+            .filter(|(customer, _)| customer.state == CustomerState::Waiting)
+            .count();
+        let debug_line = debug_status_line(&debug_settings);
+        let notice_line = if tavern_state.notice.is_empty() {
+            String::new()
+        } else {
+            format!("\n{}", tavern_state.notice)
+        };
+
         **text = format!(
-            "Last Call Tavern\nTime {:02}:00  Threat {:>3.0}%\nFood {}  Water {}  Scraps {}\nReputation {}  Morale {}\nServed {}  Missed {}\nDebug grid:{} collision:{} depth:{}\n{}",
+            "Last Call Tavern\n{:02}:00  Threat {:>3.0}%  Rep {}  Morale {}\nGuests  Waiting {} / In room {}  Served {}  Missed {}\nSupplies  Food {}  Water {}  Scraps {}\nServices  Warmth {}  Rumors {}  Goods {}{}{}",
             tavern_state.day_time.floor() as i32,
             tavern_state.threat,
+            tavern_state.reputation,
+            tavern_state.morale,
+            waiting_guests,
+            total_guests,
+            tavern_state.served,
+            tavern_state.missed,
             tavern_state.food,
             tavern_state.water,
             tavern_state.scraps,
-            tavern_state.reputation,
-            tavern_state.morale,
-            tavern_state.served,
-            tavern_state.missed,
-            on_off(debug_settings.show_grid),
-            on_off(debug_settings.show_collision),
-            on_off(debug_settings.show_depth_anchors),
-            tavern_state.notice
+            tavern_state.warmth,
+            tavern_state.rumors,
+            tavern_state.trade_goods,
+            debug_line,
+            notice_line
         );
     }
 
     if let Ok(mut text) = prompt_text.get_single_mut() {
-        **text = interaction_prompt(&player_query, &customers, &stations, &spills);
+        **text = interaction_prompt(
+            &player_query,
+            &customers,
+            &stations,
+            &spills,
+            &station_actions,
+        );
     }
 }
 
 fn interaction_prompt(
     player_query: &Query<&GridPosition, With<Player>>,
     customers: &Query<(&Customer, &GridPosition)>,
-    stations: &Query<(&Station, &GridPosition)>,
+    stations: &Query<(&Station, &StationCooldown, &GridPosition)>,
     spills: &Query<(&DirtySpill, &GridPosition)>,
+    station_actions: &StationActionCatalog,
 ) -> String {
     let Ok(player_position) = player_query.get_single() else {
         return String::new();
@@ -116,8 +139,16 @@ fn interaction_prompt(
         }
     }
 
-    for (station, station_position) in stations {
+    for (station, cooldown, station_position) in stations {
         if distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS {
+            if let Some(remaining) = cooldown.remaining_seconds() {
+                return format!("{} cooling down: {remaining:.0}s", station.kind.label());
+            }
+
+            if let Some(action) = station_actions.action_for(station.kind) {
+                return format!("E: {} - {}", station.kind.label(), action.label);
+            }
+
             return format!("E: Use {}", station.kind.label());
         }
     }
@@ -125,10 +156,22 @@ fn interaction_prompt(
     "Move through the room and tend what needs attention.".to_string()
 }
 
-fn on_off(value: bool) -> &'static str {
-    if value {
-        "on"
-    } else {
-        "off"
+fn debug_status_line(debug_settings: &DebugSettings) -> String {
+    if !debug_settings.show_grid
+        && !debug_settings.show_collision
+        && !debug_settings.show_depth_anchors
+    {
+        return String::new();
     }
+
+    format!(
+        "\nDebug  grid:{} collision:{} depth:{}",
+        on_off(debug_settings.show_grid),
+        on_off(debug_settings.show_collision),
+        on_off(debug_settings.show_depth_anchors)
+    )
+}
+
+fn on_off(value: bool) -> &'static str {
+    if value { "on" } else { "off" }
 }

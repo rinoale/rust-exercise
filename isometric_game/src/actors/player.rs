@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::config::{CHARACTER_Y_OFFSET, MAP_HEIGHT, MAP_WIDTH, PLAYER_SPEED};
-use crate::rendering::character_sprite;
+use crate::config::{MAP_HEIGHT, MAP_WIDTH, PLAYER_SPEED};
+use crate::rendering::{character_sprite, character_y_offset};
 use crate::universe::{iso_translation, GridPosition, IsoRenderable, UniverseLayer, WorldMap};
 
 #[derive(Component)]
@@ -10,12 +10,13 @@ pub struct Player;
 pub(super) fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     let start = Vec2::new(18.0, 10.0);
     let layer = UniverseLayer::Character;
+    let y_offset = character_y_offset();
 
     commands.spawn((
         character_sprite(asset_server.load("characters/bartender.png")),
         GridPosition::new(start),
-        IsoRenderable::new(CHARACTER_Y_OFFSET, layer),
-        Transform::from_translation(iso_translation(start, CHARACTER_Y_OFFSET, layer, 0.0)),
+        IsoRenderable::new(y_offset, layer),
+        Transform::from_translation(iso_translation(start, y_offset, layer, 0.0)),
         Player,
     ));
 }

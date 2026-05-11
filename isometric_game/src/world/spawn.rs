@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
-use crate::gameplay::Station;
+use crate::gameplay::{Station, StationCooldown};
 use crate::rendering::{create_diamond_mesh, create_rect_mesh, tile_sprite};
 use crate::universe::{iso_translation, GridPosition, IsoRenderable, UniverseLayer};
-use crate::world::blueprint::{PropVisual, TavernMap, WorldBlueprint};
+use crate::world::blueprint::{CutawayRule, PropPlacement, PropVisual, TavernMap, WorldBlueprint};
+use crate::world::cutaway::CutawayWhenPlayerInside;
 
 pub fn spawn_world(
     mut commands: Commands,
@@ -24,19 +25,14 @@ pub fn spawn_world(
     }
 
     for prop in &blueprint.props {
-        spawn_prop(&mut commands, &mut meshes, &mut materials, prop.grid, &prop.visual);
+        spawn_prop(&mut commands, &mut meshes, &mut materials, prop);
     }
 
     for station in &blueprint.stations {
-        spawn_prop(
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            station.prop.grid,
-            &station.prop.visual,
-        );
+        spawn_prop(&mut commands, &mut meshes, &mut materials, &station.prop);
         commands.spawn((
             Station { kind: station.kind },
+            StationCooldown::default(),
             GridPosition::new(station.prop.grid),
         ));
     }
@@ -51,18 +47,21 @@ fn spawn_prop(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
-    grid: Vec2,
-    visual: &PropVisual,
+    prop: &PropPlacement,
 ) {
-    match visual {
+    let grid = prop.grid;
+
+    match &prop.visual {
         PropVisual::MeshRect {
             size,
             color,
-            y_offset,
+            anchor,
             layer,
             depth_offset,
             shadow,
         } => {
+            let y_offset = anchor.y_offset(*size);
+
             if let Some(shadow) = shadow {
                 commands.spawn((
                     Mesh2d(meshes.add(create_diamond_mesh(shadow.size.x, shadow.size.y))),
@@ -82,18 +81,23 @@ fn spawn_prop(
                 ));
             }
 
-            commands.spawn((
+            let mut body = commands.spawn((
                 Mesh2d(meshes.add(create_rect_mesh(size.x, size.y))),
                 MeshMaterial2d(materials.add(ColorMaterial::from_color(*color))),
                 GridPosition::new(grid),
-                IsoRenderable::with_offset(*y_offset, *layer, *depth_offset),
+                Visibility::default(),
+                IsoRenderable::with_offset(y_offset, *layer, *depth_offset),
                 Transform::from_translation(iso_translation(
                     grid,
-                    *y_offset,
+                    y_offset,
                     *layer,
                     *depth_offset,
                 )),
             ));
+
+            if let CutawayRule::HideWhenPlayerInside { zone } = &prop.cutaway {
+                body.insert(CutawayWhenPlayerInside { zone: zone.clone() });
+            }
         }
     }
 }

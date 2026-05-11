@@ -82,6 +82,8 @@ pub(super) fn draw_debug_universe(
                 UniverseLayer::Prop => Color::srgba(1.0, 0.8, 0.25, 0.85),
                 UniverseLayer::Wall => Color::srgba(0.9, 0.35, 1.0, 0.85),
                 UniverseLayer::Character => Color::srgba(0.2, 1.0, 0.25, 0.95),
+                UniverseLayer::Roof => Color::srgba(1.0, 0.2, 0.2, 0.85),
+                UniverseLayer::Overlay => Color::srgba(1.0, 1.0, 1.0, 0.85),
             };
             gizmos.circle_2d(anchor, 4.0, color);
             gizmos.line_2d(

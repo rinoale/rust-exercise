@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::gameplay::StationKind;
+use crate::rendering::RenderAnchor;
 use crate::universe::{UniverseLayer, WorldMap};
 
 #[derive(Resource)]
@@ -12,6 +13,7 @@ pub struct WorldBlueprint {
     pub stations: Vec<StationPlacement>,
     pub seats: Vec<Vec2>,
     pub entrance: Vec2,
+    pub zones: Vec<WorldZone>,
 }
 
 impl WorldBlueprint {
@@ -24,6 +26,7 @@ impl WorldBlueprint {
             stations: Vec::new(),
             seats: Vec::new(),
             entrance: Vec2::ZERO,
+            zones: Vec::new(),
         }
     }
 
@@ -47,6 +50,16 @@ impl WorldBlueprint {
         self.entrance = entrance;
     }
 
+    pub fn add_zone(&mut self, zone: WorldZone) {
+        self.zones.push(zone);
+    }
+
+    pub fn zone_contains(&self, zone_name: &str, grid: Vec2) -> bool {
+        self.zones
+            .iter()
+            .any(|zone| zone.name == zone_name && zone.contains(grid))
+    }
+
     pub fn build_world_map(&self) -> WorldMap {
         let mut map = WorldMap::new(self.width, self.height);
 
@@ -58,6 +71,26 @@ impl WorldBlueprint {
         }
 
         map
+    }
+}
+
+pub struct WorldZone {
+    pub name: String,
+    pub min: Vec2,
+    pub max: Vec2,
+}
+
+impl WorldZone {
+    pub fn new(name: impl Into<String>, min: Vec2, max: Vec2) -> Self {
+        Self {
+            name: name.into(),
+            min,
+            max,
+        }
+    }
+
+    pub fn contains(&self, grid: Vec2) -> bool {
+        (self.min.x..=self.max.x).contains(&grid.x) && (self.min.y..=self.max.y).contains(&grid.y)
     }
 }
 
@@ -122,6 +155,7 @@ pub struct PropPlacement {
     pub grid: Vec2,
     pub visual: PropVisual,
     pub footprint: Footprint,
+    pub cutaway: CutawayRule,
 }
 
 impl PropPlacement {
@@ -138,7 +172,7 @@ impl PropPlacement {
             visual: PropVisual::MeshRect {
                 size: Vec2::new(width, height),
                 color,
-                y_offset: height * 0.45,
+                anchor: RenderAnchor::LowProp,
                 layer: UniverseLayer::Prop,
                 depth_offset,
                 shadow: Some(ShadowSpec {
@@ -149,6 +183,7 @@ impl PropPlacement {
                 }),
             },
             footprint,
+            cutaway: CutawayRule::None,
         }
     }
 
@@ -158,7 +193,7 @@ impl PropPlacement {
             visual: PropVisual::MeshRect {
                 size: Vec2::new(width, height),
                 color,
-                y_offset,
+                anchor: RenderAnchor::CustomYOffset(y_offset),
                 layer: UniverseLayer::Wall,
                 depth_offset: 0.0,
                 shadow: None,
@@ -167,6 +202,7 @@ impl PropPlacement {
                 grid.x.round() as i32,
                 grid.y.round() as i32,
             )]),
+            cutaway: CutawayRule::None,
         }
     }
 
@@ -180,11 +216,17 @@ impl PropPlacement {
     }
 }
 
+#[derive(Clone)]
+pub enum CutawayRule {
+    None,
+    HideWhenPlayerInside { zone: String },
+}
+
 pub enum PropVisual {
     MeshRect {
         size: Vec2,
         color: Color,
-        y_offset: f32,
+        anchor: RenderAnchor,
         layer: UniverseLayer,
         depth_offset: f32,
         shadow: Option<ShadowSpec>,

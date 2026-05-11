@@ -33,6 +33,8 @@ pub enum UniverseLayer {
     Prop,
     Wall,
     Character,
+    Roof,
+    Overlay,
 }
 
 impl UniverseLayer {
@@ -42,8 +44,10 @@ impl UniverseLayer {
             UniverseLayer::Floor => 6.0,
             UniverseLayer::Decal => 14.0,
             UniverseLayer::Prop => 42.0,
-            UniverseLayer::Wall => 58.0,
-            UniverseLayer::Character => 116.0,
+            UniverseLayer::Character => 44.0,
+            UniverseLayer::Wall => 46.0,
+            UniverseLayer::Roof => 140.0,
+            UniverseLayer::Overlay => 220.0,
         }
     }
 }

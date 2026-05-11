@@ -3,12 +3,24 @@ use rand::Rng;
 
 use crate::actors::{Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
-use crate::gameplay::{Station, StationKind, TavernState};
+use crate::gameplay::{
+    apply_station_action, missing_requirements_label, Station, StationActionCatalog,
+    StationCooldown, TavernState,
+};
 use crate::rendering::create_diamond_mesh;
 use crate::universe::{distance_grid, iso_translation, GridPosition, IsoRenderable, UniverseLayer};
 
 #[derive(Component)]
 pub struct DirtySpill;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum InteractionOutcome {
+    ServedCustomer { order: String },
+    CleanedSpill,
+    UsedStation { station: String },
+    NotReady,
+    NothingInReach,
+}
 
 pub(super) fn handle_interactions(
     mut commands: Commands,
@@ -16,9 +28,10 @@ pub(super) fn handle_interactions(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     player_query: Query<&GridPosition, With<Player>>,
-    mut customers: Query<(&mut Customer, &GridPosition)>,
-    stations: Query<(&Station, &GridPosition)>,
-    spills: Query<(Entity, &GridPosition), With<DirtySpill>>,
+    mut customers: Query<(&mut Customer, &GridPosition), Without<Player>>,
+    mut stations: Query<(&Station, &GridPosition, &mut StationCooldown), Without<Player>>,
+    spills: Query<(Entity, &GridPosition), (With<DirtySpill>, Without<Player>)>,
+    station_actions: Res<StationActionCatalog>,
     mut tavern_state: ResMut<TavernState>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyE) {
@@ -28,40 +41,76 @@ pub(super) fn handle_interactions(
     let Ok(player_position) = player_query.get_single() else {
         return;
     };
-    let player_grid = player_position.value;
 
-    for (mut customer, customer_position) in &mut customers {
+    interact_at(
+        player_position.value,
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &mut customers,
+        &mut stations,
+        &spills,
+        &station_actions,
+        &mut tavern_state,
+    );
+}
+
+pub(super) fn interact_at(
+    player_grid: Vec2,
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    customers: &mut Query<(&mut Customer, &GridPosition), Without<Player>>,
+    stations: &mut Query<(&Station, &GridPosition, &mut StationCooldown), Without<Player>>,
+    spills: &Query<(Entity, &GridPosition), (With<DirtySpill>, Without<Player>)>,
+    station_actions: &StationActionCatalog,
+    tavern_state: &mut TavernState,
+) -> InteractionOutcome {
+    for (mut customer, customer_position) in customers.iter_mut() {
         if customer.state == CustomerState::Waiting
             && distance_grid(player_grid, customer_position.value) <= INTERACT_RADIUS
         {
+            let order = customer.order.label().to_string();
             serve_customer(
                 &mut customer,
-                &mut tavern_state,
-                &mut commands,
-                &mut meshes,
-                &mut materials,
+                tavern_state,
+                commands,
+                meshes,
+                materials,
             );
-            return;
+            return InteractionOutcome::ServedCustomer { order };
         }
     }
 
-    for (entity, spill_position) in &spills {
+    for (entity, spill_position) in spills.iter() {
         if distance_grid(player_grid, spill_position.value) <= INTERACT_RADIUS {
             commands.entity(entity).despawn_recursive();
             tavern_state.morale = (tavern_state.morale + 1).min(10);
             tavern_state.set_notice("The floor is clean enough for one more night.");
-            return;
+            return InteractionOutcome::CleanedSpill;
         }
     }
 
-    for (station, station_position) in &stations {
+    for (station, station_position, mut cooldown) in stations.iter_mut() {
         if distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS {
-            interact_with_station(station.kind, &mut tavern_state);
-            return;
+            let Some(action) = station_actions.action_for(station.kind) else {
+                tavern_state.set_notice(format!("{} is not ready for use.", station.kind.label()));
+                return InteractionOutcome::NotReady;
+            };
+            apply_station_action(
+                tavern_state,
+                station.kind.label(),
+                action,
+                &mut cooldown,
+            );
+            return InteractionOutcome::UsedStation {
+                station: station.kind.label().to_string(),
+            };
         }
     }
 
     tavern_state.set_notice("Nothing useful is within reach.");
+    InteractionOutcome::NothingInReach
 }
 
 fn serve_customer(
@@ -72,66 +121,28 @@ fn serve_customer(
     materials: &mut ResMut<Assets<ColorMaterial>>,
 ) {
     let order = customer.order;
-    if tavern_state.food < order.food_cost() || tavern_state.water < order.water_cost() {
-        tavern_state.set_notice(format!("Need supplies for a {}.", order.label()));
+    let changes = order.changes();
+    if !tavern_state.can_apply(changes) {
+        let missing = missing_requirements_label(tavern_state, changes);
+        tavern_state.set_notice(format!(
+            "Need {} for a {}. Check the {}.",
+            missing,
+            order.label(),
+            order.station_hint()
+        ));
         return;
     }
 
-    tavern_state.food -= order.food_cost();
-    tavern_state.water -= order.water_cost();
-    tavern_state.scraps += order.scrap_value();
-    tavern_state.reputation += 1;
-    tavern_state.morale = (tavern_state.morale + 1).min(10);
+    tavern_state.apply_changes(changes);
     tavern_state.served += 1;
     customer.state = CustomerState::Leaving;
-    tavern_state.set_notice(format!(
-        "Served a {}. +{} scraps.",
-        order.label(),
-        order.scrap_value()
-    ));
+    tavern_state.set_notice(format!("Served a {}.", order.label()));
 
     let mut rng = rand::thread_rng();
     if rng.gen_bool(0.28) {
         let spill_grid =
             customer.target + Vec2::new(rng.gen_range(-0.45..0.45), rng.gen_range(-0.35..0.35));
         spawn_spill(commands, meshes, materials, spill_grid);
-    }
-}
-
-fn interact_with_station(kind: StationKind, tavern_state: &mut TavernState) {
-    match kind {
-        StationKind::Pantry => {
-            if tavern_state.scraps >= 2 {
-                tavern_state.scraps -= 2;
-                tavern_state.food += 3;
-                tavern_state.set_notice("Pantry stocked from sealed tins.");
-            } else {
-                tavern_state.set_notice("The pantry needs 2 scraps to restock.");
-            }
-        }
-        StationKind::WaterStill => {
-            if tavern_state.scraps >= 1 {
-                tavern_state.scraps -= 1;
-                tavern_state.water += 2;
-                tavern_state.set_notice("The still coughs up clean water.");
-            } else {
-                tavern_state.set_notice("The still needs scrap filters.");
-            }
-        }
-        StationKind::Stove => {
-            if tavern_state.food >= 1 && tavern_state.water >= 1 {
-                tavern_state.food -= 1;
-                tavern_state.water -= 1;
-                tavern_state.morale = (tavern_state.morale + 2).min(10);
-                tavern_state.set_notice("A hot pot steadies the room.");
-            } else {
-                tavern_state.set_notice("The stove needs food and water.");
-            }
-        }
-        StationKind::Radio => {
-            tavern_state.threat = (tavern_state.threat - 6.0).max(0.0);
-            tavern_state.set_notice("Static clears long enough to dodge trouble.");
-        }
     }
 }
 

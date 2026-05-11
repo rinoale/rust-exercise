@@ -1,11 +1,12 @@
 use bevy::prelude::*;
+use serde::Deserialize;
 
 #[derive(Component)]
 pub struct Station {
     pub kind: StationKind,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Eq, Hash, PartialEq)]
 pub enum StationKind {
     Pantry,
     WaterStill,

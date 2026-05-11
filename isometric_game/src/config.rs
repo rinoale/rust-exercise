@@ -10,7 +10,6 @@ pub const CAMERA_LERP: f32 = 4.8;
 
 pub const CHARACTER_SPRITE_WIDTH: f32 = 48.0;
 pub const CHARACTER_SPRITE_HEIGHT: f32 = 100.0;
-pub const CHARACTER_Y_OFFSET: f32 = CHARACTER_SPRITE_HEIGHT * 0.5;
 
 pub const INTERACT_RADIUS: f32 = 1.35;
 pub const CUSTOMER_LIMIT: usize = 6;

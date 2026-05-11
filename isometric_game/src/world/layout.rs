@@ -4,8 +4,11 @@ use crate::config::{
     MAP_HEIGHT, MAP_WIDTH, TAVERN_MAX_X, TAVERN_MAX_Y, TAVERN_MIN_X, TAVERN_MIN_Y, TILE_WIDTH,
 };
 use crate::gameplay::StationKind;
+use crate::rendering::RenderAnchor;
+use crate::universe::UniverseLayer;
 use crate::world::blueprint::{
-    Footprint, PropPlacement, StationPlacement, TileKind, TilePlacement, WorldBlueprint,
+    CutawayRule, Footprint, PropPlacement, PropVisual, StationPlacement, TileKind, TilePlacement,
+    WorldBlueprint, WorldZone,
 };
 
 pub fn demo_tavern_blueprint() -> WorldBlueprint {
@@ -49,6 +52,25 @@ fn is_tavern_porch(x: i32, y: i32) -> bool {
 fn add_tavern_shell(blueprint: &mut WorldBlueprint) {
     let wall = Color::srgb(0.20, 0.15, 0.11);
     let highlight = Color::srgb(0.34, 0.26, 0.18);
+
+    blueprint.add_prop(PropPlacement {
+        grid: Vec2::new(
+            (TAVERN_MIN_X + TAVERN_MAX_X) as f32 * 0.5,
+            (TAVERN_MIN_Y + TAVERN_MAX_Y) as f32 * 0.5,
+        ),
+        visual: PropVisual::MeshRect {
+            size: Vec2::new(760.0, 280.0),
+            color: Color::srgb(0.10, 0.08, 0.055),
+            anchor: RenderAnchor::CustomYOffset(92.0),
+            layer: UniverseLayer::Roof,
+            depth_offset: 80.0,
+            shadow: None,
+        },
+        footprint: Footprint::None,
+        cutaway: CutawayRule::HideWhenPlayerInside {
+            zone: "main_tavern".to_string(),
+        },
+    });
 
     for x in TAVERN_MIN_X..=TAVERN_MAX_X {
         blueprint.add_prop(PropPlacement::wall(
@@ -200,6 +222,12 @@ fn add_furniture(blueprint: &mut WorldBlueprint) {
 }
 
 fn add_markers(blueprint: &mut WorldBlueprint) {
+    blueprint.add_zone(WorldZone::new(
+        "main_tavern",
+        Vec2::new(TAVERN_MIN_X as f32, TAVERN_MIN_Y as f32),
+        Vec2::new(TAVERN_MAX_X as f32, TAVERN_MAX_Y as f32),
+    ));
+
     for seat in [
         Vec2::new(11.2, 8.9),
         Vec2::new(13.0, 8.8),

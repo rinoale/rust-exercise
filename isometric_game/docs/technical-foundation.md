@@ -101,6 +101,8 @@ Every asset type needs a defined anchor:
 
 If anchors are inconsistent, 2.5D sorting will fail.
 
+The active anchor presets are documented in [Asset Guidelines](asset-guidelines.md). World data should use the `anchor` field in `prop_styles` instead of encoding raw offsets in Rust code.
+
 ## Collision And Walkability
 
 Collision should be grid-driven first:
@@ -135,6 +137,12 @@ Initial rule:
 
 - Hide or fade roof when the player enters the building footprint.
 - Hide or fade front-facing walls when they block the player or important interactables.
+
+Current implementation:
+
+- World blueprint files can define named zones.
+- Prop styles can declare `cutaway: HideWhenPlayerInside(zone: "...")`.
+- The first demo tavern roof uses this rule and is hidden when the player is inside `main_tavern`.
 
 Later rule:
 
@@ -228,7 +236,8 @@ Interactions should be resolved by:
 Likely data files:
 
 - `items.ron` or `items.json`
-- `stations.ron`
+- `data/gameplay/station_actions.ron` for station costs, outputs, notices, and cooldowns
+- `stations.ron` for future station archetypes if station visuals and actions split further
 - `customers.ron`
 - `events.ron`
 - `rooms.ron`
@@ -241,6 +250,8 @@ Likely data files:
 - `upgrades.ron`
 
 RON is a natural fit for Rust, but JSON is acceptable if we want easier editing in external tools.
+
+World blueprint files should prefer named `prop_styles` for repeated visual/collision settings. Individual placements should reference styles by name unless they are true one-off objects.
 
 ## Save Data
 
