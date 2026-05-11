@@ -6,7 +6,7 @@ This folder tracks the planning documents for the Rust and Bevy 2.5D isometric t
 
 - [Vision And Goals](vision-and-goals.md): game identity, pillars, scope, and non-goals.
 - [Concept Reference](concept-reference.md): distilled design reference from the earlier Unity project note.
-- [Milestones](milestones.md): staged roadmap with acceptance criteria.
+- [Milestones](milestones.md): staged roadmap and progress checklist with acceptance criteria.
 - [Technical Foundation](technical-foundation.md): Bevy architecture plan for the isometric 2.5D foundation.
 
 ## Current Direction

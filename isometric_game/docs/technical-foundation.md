@@ -21,7 +21,7 @@ Current module responsibilities:
 
 - `config.rs`: prototype constants shared across modules.
 - `universe/`: coordinate conversion, render depth, logical grid position, render layers, map walkability, and debug overlays.
-- `world/`: camera setup/control, fixed demo layout, tavern map markers, tile spawning, wall/furniture/station placement.
+- `world/`: camera setup/control, RON world import, reusable world blueprints, fallback demo layout construction, tavern map markers, tile spawning, wall/furniture/station placement.
 - `actors/`: moving entities such as player and customers, including movement, spawning, patience, and actor-specific state.
 - `gameplay/`: non-visual rules: tavern state, orders, stations, interactions, spills, resource changes, notices, and future event logic.
 - `rendering/`: reusable sprite and mesh construction helpers.
@@ -232,7 +232,8 @@ Likely data files:
 - `customers.ron`
 - `events.ron`
 - `rooms.ron`
-- `maps/*.ron`
+- `data/worlds/*.ron` for world blueprints during the prototype phase
+- `maps/*.ron` or `worlds/*.ron` after the final content folder convention is chosen
 - `workers.ron`
 - `factions.ron`
 - `jobs.ron`
@@ -276,7 +277,8 @@ These are not polish. They are necessary for building the 2.5D foundation withou
 
 The current prototype should gradually move from hardcoded rendering toward:
 
-- `WorldMap` resource for tile/object data.
+- `WorldBlueprint` as the source for tile/object placement data.
+- `WorldMap` resource derived from blueprint walkability.
 - Spawn systems that read map data.
 - Asset registry for sprite handles and metadata.
 - Shared function for render transform and depth.

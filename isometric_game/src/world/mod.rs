@@ -1,23 +1,33 @@
+mod blueprint;
 mod camera;
+mod import;
 mod layout;
-mod setup;
+mod spawn;
 
 use bevy::prelude::*;
 
 use crate::GameSet;
 
-pub use layout::TavernMap;
+pub use blueprint::TavernMap;
 
 use camera::{camera_follow_player, camera_zoom, setup_camera};
-use layout::demo_world_map;
-use setup::setup_world;
+use import::{load_world_blueprint, DEMO_TAVERN_PATH};
+use layout::demo_tavern_blueprint;
+use spawn::spawn_world;
 
 pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(demo_world_map())
-            .add_systems(Startup, (setup_camera, setup_world).chain())
+        let blueprint = load_world_blueprint(DEMO_TAVERN_PATH).unwrap_or_else(|error| {
+            eprintln!("Falling back to built-in demo tavern blueprint: {error}");
+            demo_tavern_blueprint()
+        });
+        let world_map = blueprint.build_world_map();
+
+        app.insert_resource(blueprint)
+            .insert_resource(world_map)
+            .add_systems(Startup, (setup_camera, spawn_world).chain())
             .add_systems(
                 Update,
                 (camera_follow_player, camera_zoom).chain().in_set(GameSet::Camera),
