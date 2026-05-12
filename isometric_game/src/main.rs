@@ -20,6 +20,7 @@ pub enum GameSet {
     Actors,
     Gameplay,
     RenderSync,
+    VisualAnimation,
     Camera,
     Ui,
     Debug,
@@ -44,28 +45,29 @@ fn main() {
         }),
         ..default()
     }))
-        .insert_resource(ClearColor(Color::srgb(0.045, 0.045, 0.04)))
-        .configure_sets(
-            Update,
-            (
-                GameSet::Input,
-                GameSet::Actors,
-                GameSet::Gameplay,
-                GameSet::RenderSync,
-                GameSet::Camera,
-                GameSet::Ui,
-                GameSet::Debug,
-            )
-                .chain(),
+    .insert_resource(ClearColor(Color::srgb(0.045, 0.045, 0.04)))
+    .configure_sets(
+        Update,
+        (
+            GameSet::Input,
+            GameSet::Actors,
+            GameSet::Gameplay,
+            GameSet::RenderSync,
+            GameSet::VisualAnimation,
+            GameSet::Camera,
+            GameSet::Ui,
+            GameSet::Debug,
         )
-        .add_plugins((
-            UniversePlugin,
-            RenderingPlugin,
-            WorldPlugin,
-            ActorsPlugin,
-            GameplayPlugin,
-            UiPlugin,
-        ));
+            .chain(),
+    )
+    .add_plugins((
+        UniversePlugin,
+        RenderingPlugin,
+        WorldPlugin,
+        ActorsPlugin,
+        GameplayPlugin,
+        UiPlugin,
+    ));
 
     if let Some(scripted_playback) = scripted_playback {
         app.insert_resource(scripted_playback)

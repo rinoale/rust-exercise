@@ -11,6 +11,7 @@ This folder tracks the planning documents for the Rust and Bevy 2.5D isometric t
 - [Asset Guidelines](asset-guidelines.md): naming, anchor, size, collision, and depth rules for 2.5D assets.
 - [Texture Atlas Plan](texture-atlas-plan.md): runtime atlas grouping, metadata, packing, and Bevy import direction.
 - [Visual Upgrade Plan](visual-upgrade-plan.md): sprite, animation, building art, prop, and visual feedback milestones.
+- [Editor Authoring Plan](editor-authoring-plan.md): in-game scene editor scope, data ownership, validation, and authoring workflow.
 - [Dev Playback](dev-playback.md): scripted runtime smoke tests for movement, interactions, and visual debug wiring.
 
 ## Current Direction

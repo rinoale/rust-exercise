@@ -61,6 +61,68 @@ Use separate concepts:
 
 The conversion should stay centralized. Gameplay systems should not manually calculate screen positions.
 
+## Canonical Isometric Directions
+
+Direction names are based on the isometric world/object axes, not keyboard labels and not raw screen up/down/left/right.
+
+The project uses this canonical compass:
+
+```text
+N     E
+ \   /
+  \ /
+  / \
+ /   \
+W     S
+```
+
+With the current grid projection:
+
+```text
+screen_x = (grid_x - grid_y) * tile_width / 2
+screen_y = -(grid_x + grid_y) * tile_height / 2
+```
+
+the direction mapping is:
+
+| Iso direction | Visual screen direction | Grid delta |
+| --- | --- | --- |
+| `North` | up-left | `(-1, 0)` |
+| `East` | up-right | `(0, -1)` |
+| `South` | down-right | `(1, 0)` |
+| `West` | down-left | `(0, 1)` |
+| `NorthEast` | up | `(-1, -1)` |
+| `SouthEast` | right | `(1, -1)` |
+| `SouthWest` | down | `(1, 1)` |
+| `NorthWest` | left | `(-1, 1)` |
+
+This rule is owned by `universe::IsoDirection`. Character facing, wall/object sprite suffixes, pathfinding directions, and future placement tools should use this same direction type.
+
+For current controls, `W` moves visually up, so it resolves to `NorthEast`; `D` resolves to `SouthEast`; `S` resolves to `SouthWest`; `A` resolves to `NorthWest`.
+
+Source art labels are not authoritative. Generated sheets can contain incorrect direction labels or repeated poses, so keep raw candidate names until the actual pose direction is audited from the pixels.
+
+For new generated character sheets, prefer angle-based prompts over compass words:
+
+| Rotation column | Visual facing | Project direction |
+| --- | --- | --- |
+| `0 deg` | screen up / away | `NorthEast` |
+| `45 deg` | up-right | `East` |
+| `90 deg` | screen right | `SouthEast` |
+| `135 deg` | down-right | `South` |
+| `180 deg` | screen down / toward | `SouthWest` |
+| `225 deg` | down-left | `West` |
+| `270 deg` | screen left | `NorthWest` |
+| `315 deg` | up-left | `North` |
+
+Only rename raw candidates to `_n`, `_ne`, `_e`, `_se`, `_s`, `_sw`, `_w`, or `_nw` after a visual audit confirms every pose is distinct and correctly oriented. If the sheet lacks all eight directions, do not wire it as an 8-direction runtime character.
+
+Prompt compliance is not a direction guarantee. For production-quality animation, prefer one of these workflows:
+
+- Deterministic: model or rig the character once, then render the eight rotations from the same camera.
+- Assisted: generate rotation candidates, audit the actual visible facing direction, record an explicit source-column-to-`IsoDirection` mapping, then assemble the canonical runtime sheet from that mapping.
+- Reject: if a generated candidate has missing, duplicated, or mirrored directions, keep it as concept art only.
+
 ## Render Layers
 
 Initial layer order:
@@ -113,6 +175,19 @@ Collision should be grid-driven first:
 - Some props can be interactable without blocking movement.
 
 Later, add local avoidance for NPCs if needed. Do not start with complex physics.
+
+Current implementation:
+
+- `WorldMap` owns tile and prop blockage.
+- `universe::physics` owns shared kinematic movement, actor body radius checks, map clamping, and simple slide-on-collision response.
+- Actors choose intent and speed, but they do not decide how collision is resolved.
+- Gameplay rules should consume positions and outcomes, not reimplement movement.
+
+Near-term physics additions should stay small:
+
+- Door open/closed changes update `WorldMap`.
+- NPC pathfinding asks the map for routes, then still moves through `universe::physics`.
+- Dynamic local avoidance can layer on top of path intent later, but static world collision remains the base truth.
 
 ## Building Model
 
@@ -190,6 +265,7 @@ Recommended components:
 - `Npc`
 - `GridAgent`
 - `Path`
+- `ActorAnimation`
 - `Customer`
 - `Need`
 - `Patience`
@@ -211,6 +287,19 @@ Recommended customer states:
 Worker states should be separate from customer states. Workers need jobs such as cooking, guarding, repairing, farming, scouting, hauling, and healing.
 
 NPC behavior should be data-driven enough to add archetypes without changing pathfinding or station code.
+
+## Actor Animation Pipeline
+
+Character animation metadata lives in `data/actors/character_animations.ron`.
+
+Current rule:
+
+- Movement systems update `GridPosition`.
+- `ActorVisualMotion` derives moving/idle state and 8-direction facing from position deltas.
+- `ActorAnimation` chooses an animation clip from metadata and advances sprite frames.
+- Existing character art is still placeholder single-frame art, but the runtime path already supports state/direction/frame selection.
+
+Do not put animation selection in player or customer movement. Movement expresses intent and position; actor animation consumes the resulting state.
 
 ## Interaction Architecture
 
@@ -239,6 +328,7 @@ Likely data files:
 - `data/gameplay/station_actions.ron` for station costs, outputs, notices, and cooldowns
 - `stations.ron` for future station archetypes if station visuals and actions split further
 - `customers.ron`
+- `data/actors/character_animations.ron`
 - `events.ron`
 - `rooms.ron`
 - `data/worlds/*.ron` for world blueprints during the prototype phase

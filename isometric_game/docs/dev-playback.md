@@ -5,7 +5,7 @@ Dev playback scripts let the game drive itself when direct keyboard automation i
 Current script:
 
 ```bash
-cargo run -- --script smoke_walk_and_serve
+cargo run --bin isometric_game -- --script smoke_walk_and_serve
 ```
 
 What it does:

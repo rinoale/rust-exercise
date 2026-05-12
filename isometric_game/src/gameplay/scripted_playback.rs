@@ -1,13 +1,13 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
 
+use crate::GameSet;
 use crate::actors::{Customer, CustomerState, Player};
-use crate::gameplay::interactions::{interact_at, InteractionOutcome};
+use crate::gameplay::interactions::{InteractionOutcome, interact_at};
 use crate::gameplay::{
     DirtySpill, Station, StationActionCatalog, StationCooldown, StationKind, TavernState,
 };
 use crate::universe::{DebugSettings, GridPosition};
-use crate::GameSet;
 
 const SCRIPT_SPEED: f32 = 8.0;
 const MAX_RUNTIME_SECONDS: f32 = 45.0;
@@ -78,10 +78,7 @@ impl Plugin for ScriptedPlaybackPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScriptedPlaybackState>()
             .add_systems(Startup, setup_scripted_playback)
-            .add_systems(
-                Update,
-                run_scripted_playback.in_set(GameSet::Gameplay),
-            );
+            .add_systems(Update, run_scripted_playback.in_set(GameSet::Gameplay));
     }
 }
 
@@ -283,7 +280,11 @@ fn waiting_customer_position(
     })
 }
 
-fn move_player_toward(player_position: &mut GridPosition, target: Vec2, delta_seconds: f32) -> bool {
+fn move_player_toward(
+    player_position: &mut GridPosition,
+    target: Vec2,
+    delta_seconds: f32,
+) -> bool {
     let delta = target - player_position.value;
     if delta.length() <= 0.08 {
         player_position.value = target;

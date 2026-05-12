@@ -1,8 +1,12 @@
 use bevy::prelude::*;
 
-use crate::config::{MAP_HEIGHT, MAP_WIDTH, PLAYER_SPEED};
+use crate::actors::{ActorAnimation, ActorVisualMotion};
+use crate::config::PLAYER_SPEED;
 use crate::rendering::{character_sprite, character_y_offset};
-use crate::universe::{iso_translation, GridPosition, IsoRenderable, UniverseLayer, WorldMap};
+use crate::universe::{
+    CollisionShape, GridPosition, IsoRenderable, UniverseLayer, WorldMap, iso_translation,
+    move_with_collision,
+};
 
 #[derive(Component)]
 pub struct Player;
@@ -13,10 +17,12 @@ pub(super) fn setup_player(mut commands: Commands, asset_server: Res<AssetServer
     let y_offset = character_y_offset();
 
     commands.spawn((
-        character_sprite(asset_server.load("characters/bartender.png")),
+        character_sprite(asset_server.load("characters/bartender_turnaround/idle_se.png")),
         GridPosition::new(start),
         IsoRenderable::new(y_offset, layer),
         Transform::from_translation(iso_translation(start, y_offset, layer, 0.0)),
+        ActorVisualMotion::new(start),
+        ActorAnimation::new("bartender"),
         Player,
     ));
 }
@@ -51,35 +57,6 @@ pub(super) fn player_movement(
     }
 
     let step = direction.normalize() * PLAYER_SPEED * time.delta_secs();
-    let current = grid_position.value;
-
-    if let Some(next) = walkable_candidate(current, step, &world_map) {
-        grid_position.value = next;
-    }
-}
-
-fn walkable_candidate(current: Vec2, step: Vec2, world_map: &WorldMap) -> Option<Vec2> {
-    let full = clamp_to_map(current + step);
-    if world_map.is_walkable_world(full) {
-        return Some(full);
-    }
-
-    let x_only = clamp_to_map(current + Vec2::new(step.x, 0.0));
-    if world_map.is_walkable_world(x_only) {
-        return Some(x_only);
-    }
-
-    let y_only = clamp_to_map(current + Vec2::new(0.0, step.y));
-    if world_map.is_walkable_world(y_only) {
-        return Some(y_only);
-    }
-
-    None
-}
-
-fn clamp_to_map(grid: Vec2) -> Vec2 {
-    Vec2::new(
-        grid.x.clamp(0.0, (MAP_WIDTH - 1) as f32),
-        grid.y.clamp(0.0, (MAP_HEIGHT - 1) as f32),
-    )
+    grid_position.value =
+        move_with_collision(grid_position.value, step, &world_map, CollisionShape::ACTOR).end;
 }

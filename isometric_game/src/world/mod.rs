@@ -13,7 +13,7 @@ pub use blueprint::TavernMap;
 
 use camera::{camera_follow_player, camera_zoom, setup_camera};
 use cutaway::update_cutaways;
-use import::{load_world_blueprint, DEMO_TAVERN_PATH};
+use import::{DEMO_TAVERN_PATH, load_world_blueprint};
 use layout::demo_tavern_blueprint;
 use spawn::spawn_world;
 
@@ -33,7 +33,9 @@ impl Plugin for WorldPlugin {
             .add_systems(Update, update_cutaways.in_set(GameSet::RenderSync))
             .add_systems(
                 Update,
-                (camera_follow_player, camera_zoom).chain().in_set(GameSet::Camera),
+                (camera_follow_player, camera_zoom)
+                    .chain()
+                    .in_set(GameSet::Camera),
             );
     }
 }

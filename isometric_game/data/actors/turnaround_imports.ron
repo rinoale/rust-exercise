@@ -1,0 +1,21 @@
+(
+    imports: [
+        (
+            name: "bartender_turnaround",
+            source: "data/concepts/reference_turnaround_8dir_guided.png",
+            output_dir: "assets/characters/bartender_turnaround",
+            crop_top: 136,
+            crop_bottom: 698,
+            columns: [
+                (index: 0, degree: 0, suffix: "ne"),
+                (index: 1, degree: 45, suffix: "e"),
+                (index: 2, degree: 90, suffix: "se"),
+                (index: 3, degree: 135, suffix: "s"),
+                (index: 4, degree: 180, suffix: "sw"),
+                (index: 5, degree: 225, suffix: "w"),
+                (index: 6, degree: 270, suffix: "nw"),
+                (index: 7, degree: 315, suffix: "n"),
+            ],
+        ),
+    ],
+)

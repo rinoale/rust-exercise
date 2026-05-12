@@ -61,7 +61,7 @@ fn add_tavern_shell(blueprint: &mut WorldBlueprint) {
         visual: PropVisual::MeshRect {
             size: Vec2::new(760.0, 280.0),
             color: Color::srgb(0.10, 0.08, 0.055),
-            anchor: RenderAnchor::CustomYOffset(92.0),
+            anchor: RenderAnchor::RoofCover,
             layer: UniverseLayer::Roof,
             depth_offset: 80.0,
             shadow: None,
@@ -78,7 +78,6 @@ fn add_tavern_shell(blueprint: &mut WorldBlueprint) {
             TILE_WIDTH * 0.9,
             58.0,
             wall,
-            34.0,
         ));
     }
 
@@ -89,7 +88,6 @@ fn add_tavern_shell(blueprint: &mut WorldBlueprint) {
                 TILE_WIDTH * 0.9,
                 58.0,
                 highlight,
-                30.0,
             )
             .with_depth_offset(-1.0),
         );

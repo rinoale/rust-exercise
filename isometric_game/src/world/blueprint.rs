@@ -124,11 +124,19 @@ pub enum TileKind {
 }
 
 impl TileKind {
-    pub fn asset_path(self) -> &'static str {
+    pub fn asset_path(self, grid: IVec2) -> &'static str {
         match self {
-            TileKind::Ground => "tiles/wasteland_ground.png",
-            TileKind::TavernFloor => "tiles/tavern_floor.png",
-            TileKind::Porch => "tiles/porch_wood.png",
+            TileKind::Ground => match (grid.x + grid.y).rem_euclid(3) {
+                0 => "tiles/wasteland_dirt_a.png",
+                1 => "tiles/wasteland_dirt_b.png",
+                _ => "tiles/wasteland_scrub_a.png",
+            },
+            TileKind::TavernFloor => match (grid.x * 3 + grid.y).rem_euclid(3) {
+                0 => "tiles/tavern_floor_worn_a.png",
+                1 => "tiles/tavern_floor_worn_b.png",
+                _ => "tiles/tavern_floor_worn_c.png",
+            },
+            TileKind::Porch => "tiles/porch_planks_worn_a.png",
         }
     }
 
@@ -187,13 +195,13 @@ impl PropPlacement {
         }
     }
 
-    pub fn wall(grid: Vec2, width: f32, height: f32, color: Color, y_offset: f32) -> Self {
+    pub fn wall(grid: Vec2, width: f32, height: f32, color: Color) -> Self {
         Self {
             grid,
             visual: PropVisual::MeshRect {
                 size: Vec2::new(width, height),
                 color,
-                anchor: RenderAnchor::CustomYOffset(y_offset),
+                anchor: RenderAnchor::WallBaseline,
                 layer: UniverseLayer::Wall,
                 depth_offset: 0.0,
                 shadow: None,
@@ -207,11 +215,16 @@ impl PropPlacement {
     }
 
     pub fn with_depth_offset(mut self, depth_offset: f32) -> Self {
-        let PropVisual::MeshRect {
-            depth_offset: visual_depth,
-            ..
-        } = &mut self.visual;
-        *visual_depth = depth_offset;
+        match &mut self.visual {
+            PropVisual::MeshRect {
+                depth_offset: visual_depth,
+                ..
+            }
+            | PropVisual::Sprite {
+                depth_offset: visual_depth,
+                ..
+            } => *visual_depth = depth_offset,
+        }
         self
     }
 }
@@ -226,6 +239,14 @@ pub enum PropVisual {
     MeshRect {
         size: Vec2,
         color: Color,
+        anchor: RenderAnchor,
+        layer: UniverseLayer,
+        depth_offset: f32,
+        shadow: Option<ShadowSpec>,
+    },
+    Sprite {
+        asset_path: String,
+        size: Vec2,
         anchor: RenderAnchor,
         layer: UniverseLayer,
         depth_offset: f32,

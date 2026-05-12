@@ -13,6 +13,8 @@ If an asset is missing, create or generate a new one that matches those document
 
 ## Visual Milestone A: Asset Inventory And Runtime Metadata
 
+Status: Started. A first extractor exists at `src/bin/extract_concept_sprites.rs`, and the initial runtime sprite candidates are in `assets/`.
+
 Goal: Know exactly which prototype visuals must be replaced and define how runtime assets are addressed.
 
 Deliverables:
@@ -30,15 +32,17 @@ Done when:
 
 ## Visual Milestone B: Character Animation Pipeline
 
+Status: Started. Characters now have a shared visual-motion component with 8-direction facing state, a guided-turnaround import for the player, and 8-direction six-frame player walk cycles. NPC turnaround sheets and richer service/hurt animations are still pending.
+
 Goal: Support 8-direction animated characters without putting animation rules in player or NPC movement code.
 
 Deliverables:
 
-- Components for `FacingDirection`, `AnimationState`, and current animation clip.
+- Components for `IsoDirection`, `AnimationState`, and current animation clip.
 - Direction resolver from movement vector to 8 directions.
 - Frame timer and frame selection system.
 - Character visual metadata for idle and walk clips.
-- Main character idle/walk in 8 directions.
+- Main character idle/walk in 8 visually validated directions.
 - At least three NPC archetypes idle/walk in 8 directions.
 
 Done when:
@@ -49,6 +53,8 @@ Done when:
 
 ## Visual Milestone C: Building Kit Replacement
 
+Status: Started. The demo world can now use sprite-backed prop visuals for walls, roof, stations, props, and floor variants.
+
 Goal: Replace transparent wall rectangles and flat roof placeholders with readable 2.5D building pieces.
 
 Deliverables:
@@ -56,6 +62,7 @@ Deliverables:
 - Opaque wall sprites for back wall and side wall runs.
 - Corner, post, door, window, trim, and damaged-wall pieces.
 - Roof pieces built from patched wood and corrugated metal style references.
+- Roof cover assembled from repeated native-size pieces, not one stretched full-building sprite.
 - Cutaway-compatible roof and upper wall behavior.
 - Anchor presets strong enough to avoid `CustomYOffset` for normal wall and roof assets.
 
@@ -102,10 +109,11 @@ Done when:
 - Important gameplay state is visible in the scene, not only in the HUD.
 - A 5-minute session feels animated and readable.
 
-## Bottlenecks
+## Remaining Bottlenecks
 
-- The current character runtime uses one still PNG per character, so animation metadata and frame selection must be built before 8-direction sheets are useful.
-- Existing wall, roof, and prop visuals are mesh rectangles, so the world renderer needs sprite-backed prop visuals before real building art can replace them cleanly.
+- The current character runtime still uses one still PNG per character, so animation metadata and frame selection must be built before 8-direction sheets are useful.
+- Sprite extraction from concept sheets is first-pass and crop-box based. Several assets will need cleanup or regenerated source sheets before they are final production sprites.
 - Concept sheets are not automatically sliced runtime assets. They need extraction, cleanup, transparent backgrounds, and consistent pivots.
-- Current world data still contains hand-tuned `CustomYOffset` values for walls and roof. Production assets need reliable anchor metadata.
+- Grouped concept objects are risky for gameplay collision. Runtime sprites for collision-bearing objects should be isolated pieces, such as a counter without baked-in stools.
+- The demo world no longer uses `CustomYOffset` for normal walls and roof, but final production assets still need consistent pivots and visual QA.
 - Visual verification still depends on user screenshots when this assistant session cannot open a Bevy window.

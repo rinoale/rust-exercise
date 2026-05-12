@@ -1,7 +1,9 @@
 mod coordinates;
 mod debug;
+mod direction;
 mod layers;
 mod map;
+mod physics;
 
 use bevy::prelude::*;
 
@@ -9,8 +11,10 @@ use crate::GameSet;
 
 pub use coordinates::{distance_grid, grid_to_screen, iso_translation};
 pub use debug::DebugSettings;
+pub use direction::IsoDirection;
 pub use layers::{IsoRenderable, UniverseLayer};
 pub use map::WorldMap;
+pub use physics::{CollisionShape, move_with_collision, step_toward_with_collision};
 
 use debug::{draw_debug_universe, toggle_debug_settings};
 

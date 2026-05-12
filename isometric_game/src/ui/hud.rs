@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::actors::{Customer, CustomerState, Player};
+use crate::actors::{ActorAnimation, ActorVisualMotion, Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
 use crate::gameplay::{DirtySpill, Station, StationActionCatalog, StationCooldown, TavernState};
-use crate::universe::{distance_grid, DebugSettings, GridPosition};
+use crate::universe::{DebugSettings, GridPosition, distance_grid};
 
 #[derive(Component)]
 pub(super) struct HudText;
@@ -61,6 +61,7 @@ pub(super) fn update_ui(
     debug_settings: Res<DebugSettings>,
     tavern_state: Res<TavernState>,
     player_query: Query<&GridPosition, With<Player>>,
+    player_animation: Query<(&ActorVisualMotion, &ActorAnimation), With<Player>>,
     customers: Query<(&Customer, &GridPosition)>,
     stations: Query<(&Station, &StationCooldown, &GridPosition)>,
     spills: Query<(&DirtySpill, &GridPosition)>,
@@ -74,7 +75,7 @@ pub(super) fn update_ui(
             .iter()
             .filter(|(customer, _)| customer.state == CustomerState::Waiting)
             .count();
-        let debug_line = debug_status_line(&debug_settings);
+        let debug_line = debug_status_line(&debug_settings, &player_animation);
         let notice_line = if tavern_state.notice.is_empty() {
             String::new()
         } else {
@@ -156,19 +157,41 @@ fn interaction_prompt(
     "Move through the room and tend what needs attention.".to_string()
 }
 
-fn debug_status_line(debug_settings: &DebugSettings) -> String {
+fn debug_status_line(
+    debug_settings: &DebugSettings,
+    player_animation: &Query<(&ActorVisualMotion, &ActorAnimation), With<Player>>,
+) -> String {
     if !debug_settings.show_grid
         && !debug_settings.show_collision
         && !debug_settings.show_depth_anchors
+        && !debug_settings.show_actor_animation
     {
         return String::new();
     }
 
+    let animation = if debug_settings.show_actor_animation {
+        player_animation
+            .get_single()
+            .map(|(motion, animation)| {
+                format!(
+                    "\nAnim  moving:{} facing:{:?} {}",
+                    on_off(motion.moving),
+                    motion.facing,
+                    animation.debug_summary()
+                )
+            })
+            .unwrap_or_else(|_| "\nAnim  unavailable".to_string())
+    } else {
+        String::new()
+    };
+
     format!(
-        "\nDebug  grid:{} collision:{} depth:{}",
+        "\nDebug  grid:{} collision:{} depth:{} anim:{}{}",
         on_off(debug_settings.show_grid),
         on_off(debug_settings.show_collision),
-        on_off(debug_settings.show_depth_anchors)
+        on_off(debug_settings.show_depth_anchors),
+        on_off(debug_settings.show_actor_animation),
+        animation
     )
 }
 

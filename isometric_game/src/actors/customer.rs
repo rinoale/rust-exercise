@@ -1,10 +1,14 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::actors::{ActorAnimation, ActorVisualMotion};
 use crate::config::{CUSTOMER_LIMIT, CUSTOMER_SPEED};
 use crate::gameplay::{Order, TavernState};
 use crate::rendering::{character_sprite, character_y_offset};
-use crate::universe::{distance_grid, iso_translation, GridPosition, IsoRenderable, UniverseLayer};
+use crate::universe::{
+    CollisionShape, GridPosition, IsoRenderable, UniverseLayer, WorldMap, distance_grid,
+    iso_translation, step_toward_with_collision,
+};
 use crate::world::TavernMap;
 
 #[derive(Component)]
@@ -58,13 +62,12 @@ pub(super) fn spawn_customers(
     };
 
     let mut rng = rand::thread_rng();
-    let spawn =
-        tavern.entrance + Vec2::new(rng.gen_range(1.0..2.3), rng.gen_range(-0.7..0.8));
-    let character = match rng.gen_range(0..4) {
-        0 => "characters/traveler.png",
-        1 => "characters/courier.png",
-        2 => "characters/wounded.png",
-        _ => "characters/traveler.png",
+    let spawn = tavern.entrance + Vec2::new(rng.gen_range(1.0..2.3), rng.gen_range(-0.7..0.8));
+    let (character_id, character_asset) = match rng.gen_range(0..4) {
+        0 => ("traveler", "characters/traveler.png"),
+        1 => ("courier", "characters/courier.png"),
+        2 => ("wounded", "characters/wounded.png"),
+        _ => ("traveler", "characters/traveler.png"),
     };
     let order = match rng.gen_range(0..6) {
         0 => Order::Meal,
@@ -78,10 +81,12 @@ pub(super) fn spawn_customers(
     let y_offset = character_y_offset();
 
     commands.spawn((
-        character_sprite(asset_server.load(character)),
+        character_sprite(asset_server.load(character_asset)),
         GridPosition::new(spawn),
         IsoRenderable::new(y_offset, layer),
         Transform::from_translation(iso_translation(spawn, y_offset, layer, 0.0)),
+        ActorVisualMotion::new(spawn),
+        ActorAnimation::new(character_id),
         Customer {
             target,
             state: CustomerState::Entering,
@@ -94,6 +99,7 @@ pub(super) fn spawn_customers(
 pub(super) fn move_customers(
     mut commands: Commands,
     time: Res<Time>,
+    world_map: Res<WorldMap>,
     tavern_query: Query<&TavernMap>,
     mut customers: Query<(Entity, &mut Customer, &mut GridPosition)>,
 ) {
@@ -120,12 +126,15 @@ pub(super) fn move_customers(
         }
 
         if customer.state != CustomerState::Waiting {
-            let step = delta.normalize_or_zero() * CUSTOMER_SPEED * time.delta_secs();
-            grid_position.value += if step.length_squared() > delta.length_squared() {
-                delta
-            } else {
-                step
-            };
+            grid_position.value = step_toward_with_collision(
+                grid_position.value,
+                target,
+                CUSTOMER_SPEED,
+                time.delta_secs(),
+                &world_map,
+                CollisionShape::ACTOR,
+            )
+            .end;
         }
     }
 }

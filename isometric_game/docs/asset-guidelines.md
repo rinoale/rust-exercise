@@ -13,6 +13,8 @@ Recommended folders:
 - `assets/props/`
 - `assets/walls/`
 - `assets/roofs/`
+- `assets/decals/`
+- `assets/items/`
 - `assets/ui/`
 
 Recommended file shape:
@@ -33,7 +35,29 @@ character_bartender_idle_se.png
 ui_icon_scrap_a.png
 ```
 
+Directional suffixes must follow the canonical isometric direction rule in [Technical Foundation](technical-foundation.md), not keyboard labels:
+
+- `_n`: up-left isometric axis.
+- `_e`: up-right isometric axis.
+- `_s`: down-right isometric axis.
+- `_w`: down-left isometric axis.
+- `_ne`: visual up.
+- `_se`: visual right.
+- `_sw`: visual down.
+- `_nw`: visual left.
+
 For prototype assets that already exist, short names such as `tavern_floor.png` are acceptable. New production-facing assets should follow the longer form.
+
+## Prompt Provenance
+
+Generated concept images that become art-direction references should keep their exact prompt beside the image as a sidecar file:
+
+```text
+data/concepts/<image_name>.png
+data/concepts/<image_name>.prompt.md
+```
+
+The sidecar should preserve the prompt that produced the accepted image, not a later summary. This lets future image generation reuse successful wording without depending on chat history.
 
 ## Anchor Rules
 
@@ -44,8 +68,9 @@ Current anchor presets:
 - `TileCenter`: floor and ground tiles. The grid coordinate is the center of the diamond.
 - `LowProp`: tables, stools, barricades, crates, and station bodies. The visual is lifted slightly above the grid point.
 - `WallBaseline`: wall pieces. The grid coordinate is the wall baseline.
-- `CustomYOffset(value)`: temporary escape hatch for hand-tuned prototype objects, including early roof/cutaway placeholders.
+- `RoofCover`: roof pieces and upper building covers. The grid coordinate is the building footprint anchor.
 - `Foot`: characters. The grid coordinate is the character foot position.
+- `CustomYOffset(value)`: temporary escape hatch for unusual one-off prototype objects.
 
 World data should prefer named anchors over raw offsets. Use `CustomYOffset` only when a prototype object visibly needs tuning.
 
@@ -83,6 +108,25 @@ Common layers:
 - `Overlay`: debug or world-space overlays that must stay above normal scene objects.
 
 Do not encode depth behavior in file names.
+
+## Runtime Sprite Sources
+
+Concept sheets can be converted into runtime sprite candidates with:
+
+```bash
+cargo run --bin extract_concept_sprites
+cargo run --bin extract_character_directions
+cargo run --bin import_guided_turnaround
+cargo run --bin import_walk_cycles
+```
+
+The concept extractor writes transparent PNG candidates into `assets/props/`, `assets/walls/`, `assets/roofs/`, `assets/tiles/`, `assets/items/`, and `assets/decals/`. It removes only neutral background connected to the crop border, then applies a short-gap silhouette close so outlines, wood fills, and internal shadows stay fully opaque instead of becoming see-through.
+
+The character direction extractor slices the first character row from `data/characters.png` into `assets/characters/traveler_a_raw/` as source-column candidates. Do not assign canonical direction suffixes from source labels or prompt column order. Generated source sheets can have incorrect labels, swapped rotations, or repeated poses, so a human-visible direction audit must happen before files are renamed to `_n`, `_ne`, `_e`, `_se`, `_s`, `_sw`, `_w`, or `_nw`.
+
+The guided-turnaround importer consumes human-approved rotation sheets configured in `data/actors/turnaround_imports.ron`. Each import records the source column, degree label, and canonical direction suffix, then writes normalized transparent runtime frames such as `assets/characters/bartender_turnaround/idle_se.png`. The importer validates that all eight direction suffixes are present exactly once and that every output has both transparent and opaque pixels.
+
+The walk-cycle importer consumes six-frame one-direction strips configured in `data/actors/walk_cycle_imports.ron`. It removes the guide area, converts chroma green to alpha, trims the visible character, and bottom-aligns each frame onto a stable transparent canvas before writing files such as `assets/characters/bartender_walk/walk_se_03.png`.
 
 ## Cutaway Rules
 

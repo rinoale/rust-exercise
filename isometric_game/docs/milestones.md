@@ -44,6 +44,7 @@ Deliverables:
 - [x] Consistent sprite anchors for tiles, props, walls, and characters.
 - [x] Y-sorted draw ordering for characters and props.
 - [x] Collision and walkability grid.
+- [x] Shared universe kinematic movement primitive used by player and NPCs.
 - [x] Basic object occlusion rules: shared anchors, layer offsets, and Y-sort tests cover props, characters, and walls.
 - [x] Debug overlay for grid cells, collision, and depth anchors.
 - [x] World placement comes from a reusable blueprint instead of scattered hardcoded spawns.
@@ -56,7 +57,7 @@ Done when:
 
 ## Milestone 2: Building Asset Pipeline
 
-Status: Code complete for the first data-driven building pass. Screenshot review confirms current prototype alignment, but production assets still need a no-manual-offset pass.
+Status: Complete for the first data-driven building pass. The demo world no longer needs hand-tuned wall/roof offsets.
 
 Goal: Define how building pieces are created, named, imported, anchored, and assembled.
 
@@ -73,7 +74,7 @@ Deliverables:
 Done when:
 
 - [x] A tavern room can be rebuilt from data instead of hardcoded entity placement.
-- [ ] Art assets align to the grid without per-asset manual fixes.
+- [x] Art assets align to the grid without per-asset manual fixes.
 - [x] Roof or upper wall visibility changes when the player is inside.
 
 ## Milestone 3: Tavern Interaction Loop
@@ -103,59 +104,60 @@ Done when:
 
 ## Milestone 4: Game-Ready Sprite And Animation Foundation
 
-Status: Not started.
+Status: Started. Shared actor visual-motion state, 8-direction facing resolution, clip metadata loading, frame selection, guided-turnaround import, and 8-direction six-frame player walk cycles are in place.
 
 Goal: Replace static character sprites with a real sprite/animation pipeline that can use 8-direction character sheets and future generated assets.
 
 Deliverables:
 
-- [ ] Runtime animation components for direction, animation state, frame timing, and sprite frame selection.
-- [ ] Asset metadata format for character clips: idle, walk, service, and hurt/angry placeholders.
-- [ ] Main character uses 8-direction idle and walk sprites.
+- [x] Runtime animation components for direction, animation state, frame timing, and sprite frame selection.
+- [x] Asset metadata format for character clips: idle, walk, service, and hurt/angry placeholders.
+- [x] Main character uses validated 8-direction idle and walk sprites.
 - [ ] At least three NPC archetypes use direction-aware idle and walk sprites.
-- [ ] Movement direction drives facing direction without hardcoded per-character logic.
-- [ ] Animation debug view or debug text shows current character state, direction, and clip.
-- [ ] Sprite extraction plan for existing concept sheets, including transparent-background runtime output.
+- [x] Movement direction drives facing direction without hardcoded per-character logic.
+- [x] Animation debug view or debug text shows current character state, direction, and clip.
+- [x] Sprite extraction plan for existing concept sheets, including transparent-background runtime output.
 
 Done when:
 
 - [ ] The player visibly animates while moving in all 8 directions.
 - [ ] NPCs no longer look like static cutouts sliding across the floor.
 - [ ] Adding a new animated character does not require changing movement or rendering systems.
-- [ ] `cargo check` and animation-related tests pass.
+- [x] `cargo check` and animation-related tests pass.
 
 ## Milestone 5: Tavern Environment Art Pass
 
-Status: Not started.
+Status: Started. First concept-derived runtime sprites are extracted and the demo tavern can use sprite-backed props, walls, roof, stations, and tile variants.
 
 Goal: Replace the simple prototype room with art-directed 2.5D tavern assets: real tiles, opaque walls, roof pieces, props, shadows, and decoration.
 
 Deliverables:
 
-- [ ] Runtime tile set with at least three worn floor variants and two wasteland ground variants.
-- [ ] Wall sprite kit built from the concept art direction: back wall, side wall, corners, door, window, posts, trim, and damaged variants.
-- [ ] Roof sprite kit with cutaway-compatible roof pieces instead of one flat placeholder rectangle.
-- [ ] First real prop kit: bar counter, table, stool, stove, pantry, water still, radio, crates, barricades, lamp, shelf, and rug.
+- [x] Runtime tile set with at least three worn floor variants and two wasteland ground variants.
+- [x] Wall sprite kit built from the concept art direction: back wall, side wall, corners, door, window, posts, trim, and damaged variants.
+- [x] Roof sprite kit with cutaway-compatible repeated pieces instead of one stretched full-building cover.
+- [x] First real prop kit: bar counter, table, stool, stove, pantry, water still, radio, crates, barricades, lamp, shelf, and rug.
 - [ ] Decoration/decal set: stains, dirt, cracks, papers, bottle clutter, floor wear, soot, and warm light pools.
-- [ ] World RON references visual asset ids instead of prototype mesh colors for normal tavern objects.
-- [ ] Art fallback rule: if existing concept sheets do not contain a needed piece, create or generate a matching asset using `data/art_direction.md`.
+- [x] World RON references visual asset ids instead of prototype mesh colors for normal tavern objects.
+- [x] Art fallback rule: if existing concept sheets do not contain a needed piece, create or generate a matching asset using `data/art_direction.md`.
 
 Done when:
 
 - [ ] Screenshots no longer read as colored blocks, transparent wall placeholders, or flat prototype objects.
 - [ ] Walls are opaque readable building pieces while still supporting interior cutaway.
 - [ ] Tiles and props visually match the stored art direction.
-- [ ] The tavern still rebuilds from data and remains playable.
+- [ ] Collision-bearing props use isolated runtime sprites instead of grouped concept-art clusters.
+- [x] The tavern still rebuilds from data and remains playable.
 
 ## Milestone 6: Visual Integration And Game Feel Pass
 
-Status: Not started.
+Status: Started. Actors have simple idle/walk visual motion; richer interaction and station feedback are still pending.
 
 Goal: Make the upgraded art feel alive in play rather than only looking correct in static screenshots.
 
 Deliverables:
 
-- [ ] Idle fidgets or subtle breathing for player and common NPCs.
+- [x] Idle fidgets or subtle breathing for player and common NPCs.
 - [ ] Service interaction animation or pose feedback when serving guests and using stations.
 - [ ] Station feedback: stove warmth, radio signal pulse, water still activity, pantry use, and cooldown state.
 - [ ] Prop interaction feedback for cleaning spills and serving customers.
@@ -189,7 +191,37 @@ Done when:
 - [ ] NPC state can be inspected in debug UI.
 - [ ] Bad service creates visible behavior changes.
 
-## Milestone 8: Save, Load, And Data-Driven Content
+## Milestone 8: In-Game Scene Editor And Content Authoring
+
+Status: Not started.
+
+Goal: Let scenes, object placement, collision footprints, station markers, and visual tuning change through data files without Rust source edits or rebuilds.
+
+Principle: Rust owns engine behavior. World `.ron` files and editor tools own content.
+
+Deliverables:
+
+- [ ] Launch the game with an explicit world path, for example `--world data/worlds/demo_tavern.ron`.
+- [ ] Editor mode toggle that does not break normal play mode.
+- [ ] Grid cursor with tile coordinate readout.
+- [ ] Palette for existing visual asset ids: tiles, walls, roofs, props, decals, stations, and markers.
+- [ ] Place, move, duplicate, and delete world objects from the editor.
+- [ ] Edit per-object basics: grid position, layer, anchor preset, render size, depth offset, collision footprint, station id, cutaway zone, and marker id.
+- [ ] Save the edited world back to a `.ron` file.
+- [ ] Reload the current world file without recompiling.
+- [ ] Validation report before save: missing asset id, invalid anchor/layer, overlapping blocking objects, station without gameplay definition, marker id duplicates.
+- [ ] Undo/redo for recent editor actions.
+- [ ] Editor-only debug overlays for collision, anchors, depth sort order, cutaway zones, and station interaction radius.
+- [ ] Documentation for authoring a new scene from scratch.
+
+Done when:
+
+- [ ] A new room or exterior scene can be created by running the editor, not by editing Rust code.
+- [ ] Changing object position, collision, or station placement does not require `cargo build`.
+- [ ] The saved `.ron` can be loaded by normal play mode.
+- [ ] A content mistake gives a readable validation error instead of a silent broken scene.
+
+## Milestone 9: Save, Load, And Data-Driven Content
 
 Status: Not started.
 
@@ -209,7 +241,7 @@ Done when:
 - [ ] The player can quit and resume a tavern state.
 - [ ] Adding a new item or station does not require editing core gameplay code.
 
-## Milestone 9: Vertical Slice
+## Milestone 10: Vertical Slice
 
 Status: Not started.
 
@@ -234,7 +266,7 @@ Done when:
 - [ ] A 15-minute session creates different outcomes based on choices.
 - [ ] The game looks visually aligned with the stored art direction.
 
-## Milestone 10: Wider Apocalypse Systems
+## Milestone 11: Wider Apocalypse Systems
 
 Status: Not started.
 
@@ -256,7 +288,7 @@ Done when:
 - [ ] The player can prepare for danger by changing the tavern layout or upgrades.
 - [ ] Expansion systems still feed back into tavern service and survival pressure.
 
-## Milestone 11: Production Decision
+## Milestone 12: Production Decision
 
 Status: Future decision.
 

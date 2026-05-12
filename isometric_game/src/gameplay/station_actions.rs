@@ -137,10 +137,7 @@ pub fn load_station_action_catalog(path: &str) -> Result<StationActionCatalog, S
     StationActionCatalog::from_actions(actions)
 }
 
-pub(super) fn tick_station_cooldowns(
-    time: Res<Time>,
-    mut stations: Query<&mut StationCooldown>,
-) {
+pub(super) fn tick_station_cooldowns(time: Res<Time>, mut stations: Query<&mut StationCooldown>) {
     for mut cooldown in &mut stations {
         cooldown.tick(time.delta());
     }
@@ -154,7 +151,9 @@ pub fn apply_station_action(
 ) {
     if !cooldown.is_ready() {
         if let Some(remaining) = cooldown.remaining_seconds() {
-            tavern_state.set_notice(format!("{station_label} needs {remaining:.0}s before reuse."));
+            tavern_state.set_notice(format!(
+                "{station_label} needs {remaining:.0}s before reuse."
+            ));
         }
         return;
     }

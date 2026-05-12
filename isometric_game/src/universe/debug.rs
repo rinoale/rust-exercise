@@ -1,13 +1,14 @@
 use bevy::prelude::*;
 
 use crate::config::{TILE_HEIGHT, TILE_WIDTH};
-use crate::universe::{grid_to_screen, GridPosition, IsoRenderable, UniverseLayer, WorldMap};
+use crate::universe::{GridPosition, IsoRenderable, UniverseLayer, WorldMap, grid_to_screen};
 
 #[derive(Resource)]
 pub struct DebugSettings {
     pub show_grid: bool,
     pub show_collision: bool,
     pub show_depth_anchors: bool,
+    pub show_actor_animation: bool,
 }
 
 impl Default for DebugSettings {
@@ -16,6 +17,7 @@ impl Default for DebugSettings {
             show_grid: false,
             show_collision: false,
             show_depth_anchors: false,
+            show_actor_animation: false,
         }
     }
 }
@@ -32,6 +34,9 @@ pub(super) fn toggle_debug_settings(
     }
     if keyboard.just_pressed(KeyCode::F3) {
         debug.show_depth_anchors = !debug.show_depth_anchors;
+    }
+    if keyboard.just_pressed(KeyCode::F4) {
+        debug.show_actor_animation = !debug.show_actor_animation;
     }
 }
 

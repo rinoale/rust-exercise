@@ -113,7 +113,10 @@ impl StyleLibrary {
         let mut styles = HashMap::new();
 
         for definition in definitions {
-            if styles.insert(definition.name.clone(), definition.style).is_some() {
+            if styles
+                .insert(definition.name.clone(), definition.style)
+                .is_some()
+            {
                 return Err(format!("duplicate prop style '{}'", definition.name));
             }
         }
@@ -249,8 +252,11 @@ enum PropStyleRefFile {
 #[derive(Clone, Deserialize)]
 struct PropStyleFile {
     size: Vec<f32>,
-    color: Vec<f32>,
     layer: PropLayerFile,
+    #[serde(default)]
+    asset: String,
+    #[serde(default)]
+    color: Vec<f32>,
     #[serde(default)]
     anchor: RenderAnchorFile,
     #[serde(default)]
@@ -284,16 +290,33 @@ impl PropStyleFile {
             depth_offset: self.depth_offset - 1.0,
         });
 
-        Ok(PropPlacement {
-            grid,
-            visual: PropVisual::MeshRect {
+        let visual = if !self.asset.is_empty() {
+            PropVisual::Sprite {
+                asset_path: self.asset,
                 size,
-                color: color(&self.color, "prop color")?,
                 anchor,
                 layer,
                 depth_offset: self.depth_offset,
                 shadow,
-            },
+            }
+        } else {
+            if self.color.is_empty() {
+                return Err(format!("prop at {grid:?} needs either asset or color"));
+            }
+
+            PropVisual::MeshRect {
+                size,
+                color: color_value(&self.color, "prop color")?,
+                anchor,
+                layer,
+                depth_offset: self.depth_offset,
+                shadow,
+            }
+        };
+
+        Ok(PropPlacement {
+            grid,
+            visual,
             footprint: self.footprint.into_footprint()?,
             cutaway: self.cutaway.into_cutaway_rule(),
         })
@@ -306,6 +329,7 @@ enum RenderAnchorFile {
     #[default]
     LowProp,
     WallBaseline,
+    RoofCover,
     Foot,
     CustomYOffset(f32),
 }
@@ -317,6 +341,7 @@ impl RenderAnchorFile {
             (RenderAnchorFile::LowProp, UniverseLayer::Wall) => RenderAnchor::WallBaseline,
             (RenderAnchorFile::LowProp, _) => RenderAnchor::LowProp,
             (RenderAnchorFile::WallBaseline, _) => RenderAnchor::WallBaseline,
+            (RenderAnchorFile::RoofCover, _) => RenderAnchor::RoofCover,
             (RenderAnchorFile::Foot, _) => RenderAnchor::Foot,
             (RenderAnchorFile::CustomYOffset(offset), _) => RenderAnchor::CustomYOffset(offset),
         }
@@ -348,7 +373,9 @@ impl PropLayerFile {
 enum CutawayFile {
     #[default]
     None,
-    HideWhenPlayerInside { zone: String },
+    HideWhenPlayerInside {
+        zone: String,
+    },
 }
 
 impl CutawayFile {
@@ -438,7 +465,7 @@ fn vec2(value: &[f32], label: &str) -> Result<Vec2, String> {
     Ok(Vec2::new(value[0], value[1]))
 }
 
-fn color(value: &[f32], label: &str) -> Result<Color, String> {
+fn color_value(value: &[f32], label: &str) -> Result<Color, String> {
     if value.len() != 3 {
         return Err(format!("{label} must have exactly 3 values, got {value:?}"));
     }
@@ -460,11 +487,28 @@ mod tests {
         assert_eq!(blueprint.zones.len(), 1);
         assert_eq!(blueprint.stations.len(), 4);
         assert_eq!(blueprint.seats.len(), 6);
-        assert_eq!(blueprint.props.len(), 55);
+        assert_eq!(blueprint.props.len(), 64);
+        assert_eq!(
+            blueprint
+                .props
+                .iter()
+                .filter(|prop| matches!(
+                    (&prop.visual, &prop.cutaway),
+                    (
+                        PropVisual::Sprite {
+                            layer: UniverseLayer::Roof,
+                            ..
+                        },
+                        CutawayRule::HideWhenPlayerInside { zone }
+                    ) if zone == "main_tavern"
+                ))
+                .count(),
+            10
+        );
         assert!(blueprint.props.iter().any(|prop| matches!(
             (&prop.visual, &prop.cutaway),
             (
-                PropVisual::MeshRect {
+                PropVisual::Sprite {
                     layer: UniverseLayer::Roof,
                     ..
                 },
@@ -474,6 +518,7 @@ mod tests {
 
         let world_map = blueprint.build_world_map();
         assert!(world_map.is_blocked(5, 4));
-        assert!(world_map.is_blocked(8, 7));
+        assert!(world_map.is_blocked(8, 6));
+        assert!(world_map.is_blocked(9, 7));
     }
 }

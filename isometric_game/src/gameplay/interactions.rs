@@ -4,11 +4,11 @@ use rand::Rng;
 use crate::actors::{Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
 use crate::gameplay::{
-    apply_station_action, missing_requirements_label, Station, StationActionCatalog,
-    StationCooldown, TavernState,
+    Station, StationActionCatalog, StationCooldown, TavernState, apply_station_action,
+    missing_requirements_label,
 };
 use crate::rendering::create_diamond_mesh;
-use crate::universe::{distance_grid, iso_translation, GridPosition, IsoRenderable, UniverseLayer};
+use crate::universe::{GridPosition, IsoRenderable, UniverseLayer, distance_grid, iso_translation};
 
 #[derive(Component)]
 pub struct DirtySpill;
@@ -71,13 +71,7 @@ pub(super) fn interact_at(
             && distance_grid(player_grid, customer_position.value) <= INTERACT_RADIUS
         {
             let order = customer.order.label().to_string();
-            serve_customer(
-                &mut customer,
-                tavern_state,
-                commands,
-                meshes,
-                materials,
-            );
+            serve_customer(&mut customer, tavern_state, commands, meshes, materials);
             return InteractionOutcome::ServedCustomer { order };
         }
     }
@@ -97,12 +91,7 @@ pub(super) fn interact_at(
                 tavern_state.set_notice(format!("{} is not ready for use.", station.kind.label()));
                 return InteractionOutcome::NotReady;
             };
-            apply_station_action(
-                tavern_state,
-                station.kind.label(),
-                action,
-                &mut cooldown,
-            );
+            apply_station_action(tavern_state, station.kind.label(), action, &mut cooldown);
             return InteractionOutcome::UsedStation {
                 station: station.kind.label().to_string(),
             };

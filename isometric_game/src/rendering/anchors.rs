@@ -5,6 +5,7 @@ pub enum RenderAnchor {
     TileCenter,
     LowProp,
     WallBaseline,
+    RoofCover,
     Foot,
     CustomYOffset(f32),
 }
@@ -15,6 +16,7 @@ impl RenderAnchor {
             RenderAnchor::TileCenter => 0.0,
             RenderAnchor::LowProp => size.y * 0.45,
             RenderAnchor::WallBaseline => size.y * 0.5,
+            RenderAnchor::RoofCover => size.y * 0.33,
             RenderAnchor::Foot => size.y * 0.5,
             RenderAnchor::CustomYOffset(offset) => offset,
         }
