@@ -1,5 +1,6 @@
 pub const TILE_WIDTH: f32 = 64.0;
 pub const TILE_HEIGHT: f32 = 32.0;
+pub const LEVEL_HEIGHT: f32 = 96.0;
 
 pub const MAP_WIDTH: i32 = 26;
 pub const MAP_HEIGHT: i32 = 18;

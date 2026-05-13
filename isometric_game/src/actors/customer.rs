@@ -7,13 +7,13 @@ use crate::gameplay::{Order, TavernState};
 use crate::rendering::{character_sprite, character_y_offset};
 use crate::universe::{
     CollisionShape, GridPosition, IsoRenderable, UniverseLayer, WorldMap, distance_grid,
-    iso_translation, step_toward_with_collision,
+    iso_translation_at, step_toward_with_collision_at,
 };
-use crate::world::TavernMap;
+use crate::world::{NavPoint, TavernMap, VerticalLink};
 
 #[derive(Component)]
 pub struct Customer {
-    pub target: Vec2,
+    pub target: NavPoint,
     pub state: CustomerState,
     pub patience: Timer,
     pub order: Order,
@@ -62,7 +62,6 @@ pub(super) fn spawn_customers(
     };
 
     let mut rng = rand::thread_rng();
-    let spawn = tavern.entrance + Vec2::new(rng.gen_range(1.0..2.3), rng.gen_range(-0.7..0.8));
     let (character_id, character_asset) = match rng.gen_range(0..4) {
         0 => ("traveler", "characters/traveler.png"),
         1 => ("courier", "characters/courier.png"),
@@ -79,13 +78,22 @@ pub(super) fn spawn_customers(
     };
     let layer = UniverseLayer::Character;
     let y_offset = character_y_offset();
+    let spawn = tavern
+        .entrance
+        .offset(Vec2::new(rng.gen_range(1.0..2.3), rng.gen_range(-0.7..0.8)));
 
     commands.spawn((
         character_sprite(asset_server.load(character_asset)),
-        GridPosition::new(spawn),
+        GridPosition::at(spawn.value, spawn.z),
         IsoRenderable::new(y_offset, layer),
-        Transform::from_translation(iso_translation(spawn, y_offset, layer, 0.0)),
-        ActorVisualMotion::new(spawn),
+        Transform::from_translation(iso_translation_at(
+            spawn.value,
+            spawn.z,
+            y_offset,
+            layer,
+            0.0,
+        )),
+        ActorVisualMotion::new(spawn.value),
         ActorAnimation::new(character_id),
         Customer {
             target,
@@ -108,12 +116,21 @@ pub(super) fn move_customers(
     };
 
     for (entity, mut customer, mut grid_position) in &mut customers {
-        let target = match customer.state {
+        let final_target = match customer.state {
             CustomerState::Entering | CustomerState::Waiting => customer.target,
-            CustomerState::Leaving => tavern.entrance + Vec2::new(1.8, 0.0),
+            CustomerState::Leaving => tavern.entrance.offset(Vec2::new(1.8, 0.0)),
         };
+        if let Some(exit) =
+            vertical_exit_toward_destination(&grid_position, final_target, &tavern.vertical_links)
+        {
+            grid_position.value = exit.value;
+            grid_position.z = exit.z;
+            continue;
+        }
 
-        let delta = target - grid_position.value;
+        let target = next_customer_waypoint(&grid_position, final_target, &tavern.vertical_links);
+
+        let delta = target.value - grid_position.value;
         if delta.length() < 0.08 {
             match customer.state {
                 CustomerState::Entering => customer.state = CustomerState::Waiting,
@@ -126,11 +143,12 @@ pub(super) fn move_customers(
         }
 
         if customer.state != CustomerState::Waiting {
-            grid_position.value = step_toward_with_collision(
+            grid_position.value = step_toward_with_collision_at(
                 grid_position.value,
-                target,
+                target.value,
                 CUSTOMER_SPEED,
                 time.delta_secs(),
+                grid_position.z,
                 &world_map,
                 CollisionShape::ACTOR,
             )
@@ -161,16 +179,17 @@ pub(super) fn customer_patience(
     }
 }
 
-fn pick_free_seat(tavern: &TavernMap, customers: &Query<&Customer>) -> Option<Vec2> {
+fn pick_free_seat(tavern: &TavernMap, customers: &Query<&Customer>) -> Option<NavPoint> {
     let mut rng = rand::thread_rng();
-    let free: Vec<Vec2> = tavern
+    let free: Vec<NavPoint> = tavern
         .seats
         .iter()
         .copied()
         .filter(|seat| {
-            customers
-                .iter()
-                .all(|customer| distance_grid(customer.target, *seat) > 0.4)
+            customers.iter().all(|customer| {
+                customer.target.z != seat.z
+                    || distance_grid(customer.target.value, seat.value) > 0.4
+            })
         })
         .collect();
 
@@ -179,4 +198,43 @@ fn pick_free_seat(tavern: &TavernMap, customers: &Query<&Customer>) -> Option<Ve
     } else {
         Some(free[rng.gen_range(0..free.len())])
     }
+}
+
+fn next_customer_waypoint(
+    current: &GridPosition,
+    destination: NavPoint,
+    links: &[VerticalLink],
+) -> NavPoint {
+    if current.z == destination.z {
+        return destination;
+    }
+
+    links
+        .iter()
+        .filter_map(|link| {
+            let entry = link.entry_for_level(current.z)?;
+            let exit = link.exit_from_entry(entry)?;
+            (exit.z == destination.z).then_some((
+                entry,
+                entry.value.distance(current.value) + exit.value.distance(destination.value),
+            ))
+        })
+        .min_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(entry, _)| entry)
+        .unwrap_or_else(|| NavPoint::at(destination.value, current.z))
+}
+
+fn vertical_exit_toward_destination(
+    current: &GridPosition,
+    destination: NavPoint,
+    links: &[VerticalLink],
+) -> Option<NavPoint> {
+    if current.z == destination.z {
+        return None;
+    }
+
+    links
+        .iter()
+        .filter_map(|link| link.destination_from_near(current.value, current.z, 0.08))
+        .find(|exit| exit.z == destination.z)
 }

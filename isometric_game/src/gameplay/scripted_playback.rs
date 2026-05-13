@@ -8,6 +8,7 @@ use crate::gameplay::{
     DirtySpill, Station, StationActionCatalog, StationCooldown, StationKind, TavernState,
 };
 use crate::universe::{DebugSettings, GridPosition};
+use crate::world::NavPoint;
 
 const SCRIPT_SPEED: f32 = 8.0;
 const MAX_RUNTIME_SECONDS: f32 = 45.0;
@@ -24,29 +25,10 @@ pub struct ScriptedPlaybackConfig {
 }
 
 impl ScriptedPlaybackConfig {
-    pub fn from_args(args: impl IntoIterator<Item = String>) -> Result<Option<Self>, String> {
-        let mut args = args.into_iter();
-        let mut script = None;
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "--script" => {
-                    let Some(name) = args.next() else {
-                        return Err("--script requires a script name".to_string());
-                    };
-                    script = Some(ScriptedPlaybackKind::from_name(&name)?);
-                }
-                "--help" | "-h" => {
-                    print_script_help();
-                    std::process::exit(0);
-                }
-                other => {
-                    return Err(format!("unknown argument '{other}'"));
-                }
-            }
-        }
-
-        Ok(script.map(|script| Self { script }))
+    pub fn from_script_name(name: &str) -> Result<Self, String> {
+        Ok(Self {
+            script: ScriptedPlaybackKind::from_name(name)?,
+        })
     }
 }
 
@@ -189,6 +171,7 @@ fn run_scripted_playback(
             if move_player_toward(&mut player_position, target, time.delta_secs()) {
                 let outcome = interact_at(
                     player_position.value,
+                    player_position.z,
                     &mut commands,
                     &mut meshes,
                     &mut materials,
@@ -222,6 +205,7 @@ fn run_scripted_playback(
             if move_player_toward(&mut player_position, target, time.delta_secs()) {
                 let outcome = interact_at(
                     player_position.value,
+                    player_position.z,
                     &mut commands,
                     &mut meshes,
                     &mut materials,
@@ -257,9 +241,12 @@ fn run_scripted_playback(
 fn station_approach_point(
     station_kind: StationKind,
     stations: &mut Query<(&Station, &GridPosition, &mut StationCooldown), Without<Player>>,
-) -> Option<Vec2> {
+) -> Option<NavPoint> {
     stations.iter_mut().find_map(|(station, position, _)| {
-        (station.kind == station_kind).then_some(position.value + approach_offset(station_kind))
+        (station.kind == station_kind).then_some(NavPoint::at(
+            position.value + approach_offset(station_kind),
+            position.z,
+        ))
     })
 }
 
@@ -274,20 +261,25 @@ fn approach_offset(station_kind: StationKind) -> Vec2 {
 
 fn waiting_customer_position(
     customers: &mut Query<(&mut Customer, &GridPosition), Without<Player>>,
-) -> Option<Vec2> {
+) -> Option<NavPoint> {
     customers.iter_mut().find_map(|(customer, position)| {
-        (customer.state == CustomerState::Waiting).then_some(position.value)
+        (customer.state == CustomerState::Waiting)
+            .then_some(NavPoint::at(position.value, position.z))
     })
 }
 
 fn move_player_toward(
     player_position: &mut GridPosition,
-    target: Vec2,
+    target: NavPoint,
     delta_seconds: f32,
 ) -> bool {
-    let delta = target - player_position.value;
+    if player_position.z != target.z {
+        return false;
+    }
+
+    let delta = target.value - player_position.value;
     if delta.length() <= 0.08 {
-        player_position.value = target;
+        player_position.value = target.value;
         return true;
     }
 
@@ -317,9 +309,4 @@ fn log_tavern_state(script: ScriptedPlaybackKind, label: &str, tavern_state: &Ta
         tavern_state.reputation,
         tavern_state.threat
     );
-}
-
-fn print_script_help() {
-    println!("Usage:");
-    println!("  cargo run -- --script smoke_walk_and_serve");
 }

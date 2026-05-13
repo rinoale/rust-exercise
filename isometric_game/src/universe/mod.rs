@@ -9,12 +9,12 @@ use bevy::prelude::*;
 
 use crate::GameSet;
 
-pub use coordinates::{distance_grid, grid_to_screen, iso_translation};
+pub use coordinates::{distance_grid, grid_to_screen_at, iso_translation_at, screen_to_grid_at};
 pub use debug::DebugSettings;
 pub use direction::IsoDirection;
 pub use layers::{IsoRenderable, UniverseLayer};
-pub use map::WorldMap;
-pub use physics::{CollisionShape, move_with_collision, step_toward_with_collision};
+pub use map::{EdgeDirection, WorldMap};
+pub use physics::{CollisionShape, move_with_collision_at, step_toward_with_collision_at};
 
 use debug::{draw_debug_universe, toggle_debug_settings};
 
@@ -35,8 +35,9 @@ impl Plugin for UniversePlugin {
 
 fn apply_iso_transforms(mut query: Query<(&GridPosition, &IsoRenderable, &mut Transform)>) {
     for (grid_position, renderable, mut transform) in &mut query {
-        transform.translation = iso_translation(
+        transform.translation = iso_translation_at(
             grid_position.value,
+            grid_position.z,
             renderable.y_offset,
             renderable.layer,
             renderable.depth_offset,
@@ -47,10 +48,15 @@ fn apply_iso_transforms(mut query: Query<(&GridPosition, &IsoRenderable, &mut Tr
 #[derive(Component, Clone, Copy, Debug)]
 pub struct GridPosition {
     pub value: Vec2,
+    pub z: i32,
 }
 
 impl GridPosition {
     pub fn new(value: Vec2) -> Self {
-        Self { value }
+        Self::at(value, 0)
+    }
+
+    pub fn at(value: Vec2, z: i32) -> Self {
+        Self { value, z }
     }
 }

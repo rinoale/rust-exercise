@@ -8,7 +8,10 @@ use crate::gameplay::{
     missing_requirements_label,
 };
 use crate::rendering::create_diamond_mesh;
-use crate::universe::{GridPosition, IsoRenderable, UniverseLayer, distance_grid, iso_translation};
+use crate::universe::{
+    GridPosition, IsoRenderable, UniverseLayer, distance_grid, iso_translation_at,
+};
+use crate::world::{NavPoint, VerticalLink, WorldBlueprint};
 
 #[derive(Component)]
 pub struct DirtySpill;
@@ -27,23 +30,39 @@ pub(super) fn handle_interactions(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    player_query: Query<&GridPosition, With<Player>>,
+    mut player_query: Query<&mut GridPosition, With<Player>>,
     mut customers: Query<(&mut Customer, &GridPosition), Without<Player>>,
     mut stations: Query<(&Station, &GridPosition, &mut StationCooldown), Without<Player>>,
     spills: Query<(Entity, &GridPosition), (With<DirtySpill>, Without<Player>)>,
     station_actions: Res<StationActionCatalog>,
     mut tavern_state: ResMut<TavernState>,
+    blueprint: Res<WorldBlueprint>,
 ) {
     if !keyboard.just_pressed(KeyCode::KeyE) {
         return;
     }
 
-    let Ok(player_position) = player_query.get_single() else {
+    let Ok(mut player_position) = player_query.get_single_mut() else {
         return;
     };
 
+    if let Some((link_id, link_label, destination)) = vertical_link_destination(
+        player_position.value,
+        player_position.z,
+        &blueprint.vertical_links,
+    ) {
+        player_position.value = destination.value;
+        player_position.z = destination.z;
+        tavern_state.set_notice(format!(
+            "Used {link_label} '{link_id}' to reach level {}.",
+            destination.z
+        ));
+        return;
+    }
+
     interact_at(
         player_position.value,
+        player_position.z,
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -57,6 +76,7 @@ pub(super) fn handle_interactions(
 
 pub(super) fn interact_at(
     player_grid: Vec2,
+    player_z: i32,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
@@ -68,6 +88,7 @@ pub(super) fn interact_at(
 ) -> InteractionOutcome {
     for (mut customer, customer_position) in customers.iter_mut() {
         if customer.state == CustomerState::Waiting
+            && customer_position.z == player_z
             && distance_grid(player_grid, customer_position.value) <= INTERACT_RADIUS
         {
             let order = customer.order.label().to_string();
@@ -77,7 +98,9 @@ pub(super) fn interact_at(
     }
 
     for (entity, spill_position) in spills.iter() {
-        if distance_grid(player_grid, spill_position.value) <= INTERACT_RADIUS {
+        if spill_position.z == player_z
+            && distance_grid(player_grid, spill_position.value) <= INTERACT_RADIUS
+        {
             commands.entity(entity).despawn_recursive();
             tavern_state.morale = (tavern_state.morale + 1).min(10);
             tavern_state.set_notice("The floor is clean enough for one more night.");
@@ -86,7 +109,9 @@ pub(super) fn interact_at(
     }
 
     for (station, station_position, mut cooldown) in stations.iter_mut() {
-        if distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS {
+        if station_position.z == player_z
+            && distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS
+        {
             let Some(action) = station_actions.action_for(station.kind) else {
                 tavern_state.set_notice(format!("{} is not ready for use.", station.kind.label()));
                 return InteractionOutcome::NotReady;
@@ -129,9 +154,9 @@ fn serve_customer(
 
     let mut rng = rand::thread_rng();
     if rng.gen_bool(0.28) {
-        let spill_grid =
-            customer.target + Vec2::new(rng.gen_range(-0.45..0.45), rng.gen_range(-0.35..0.35));
-        spawn_spill(commands, meshes, materials, spill_grid);
+        let spill_grid = customer.target.value
+            + Vec2::new(rng.gen_range(-0.45..0.45), rng.gen_range(-0.35..0.35));
+        spawn_spill(commands, meshes, materials, spill_grid, customer.target.z);
     }
 }
 
@@ -140,6 +165,7 @@ fn spawn_spill(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     grid: Vec2,
+    z: i32,
 ) {
     let layer = UniverseLayer::Decal;
     commands.spawn((
@@ -147,9 +173,29 @@ fn spawn_spill(
         MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgba(
             0.16, 0.08, 0.04, 0.68,
         )))),
-        GridPosition::new(grid),
+        GridPosition::at(grid, z),
         IsoRenderable::with_offset(2.0, layer, 8.0),
-        Transform::from_translation(iso_translation(grid, 2.0, layer, 8.0)),
+        Transform::from_translation(iso_translation_at(grid, z, 2.0, layer, 8.0)),
         DirtySpill,
     ));
+}
+
+pub(crate) fn vertical_link_destination(
+    grid: Vec2,
+    z: i32,
+    links: &[VerticalLink],
+) -> Option<(String, &'static str, NavPoint)> {
+    links
+        .iter()
+        .filter_map(|link| {
+            let destination = link.destination_from_near(grid, z, INTERACT_RADIUS)?;
+            let distance = if z == link.lower.z {
+                grid.distance(link.lower.value)
+            } else {
+                grid.distance(link.upper.value)
+            };
+            Some((link.id.clone(), link.kind.label(), destination, distance))
+        })
+        .min_by(|(_, _, _, a), (_, _, _, b)| a.total_cmp(b))
+        .map(|(id, label, destination, _)| (id, label, destination))
 }

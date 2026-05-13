@@ -43,7 +43,7 @@ If a feature becomes shared by many systems, place the stable primitive in `univ
 2.5D means:
 
 - The world uses 2D sprites and tile assets.
-- The game simulates on a 2D grid or 2D world plane.
+- The game simulates on an isometric grid with discrete `z` levels.
 - The view is fixed isometric.
 - Depth is created through sprite anchors, Y-sorting, layered assets, shadows, and occlusion.
 - Buildings are assembled from floor, wall, prop, roof, and overlay sprites.
@@ -54,12 +54,30 @@ It does not mean true 3D models with a perspective camera.
 
 Use separate concepts:
 
-- `GridPos`: logical tile position, usually integer or half-tile coordinates.
+- `GridPosition`: logical position with continuous `x/y` and discrete `z` level.
 - `WorldPos`: continuous 2D simulation position.
 - `IsoPos`: screen-space render position derived from world/grid coordinates.
 - `Depth`: render ordering value derived from position and layer.
 
 The conversion should stay centralized. Gameplay systems should not manually calculate screen positions.
+
+Important rule:
+
+```text
+world z/elevation != Bevy Transform.z
+```
+
+World `z` is the logical building level used by collision, placement, cutaway, and future pathfinding. Bevy `Transform.z` remains a renderer depth value derived from `(x, y, z, layer, depth_offset)`.
+
+Current projection:
+
+```text
+screen_x = (grid_x - grid_y) * tile_width / 2
+screen_y = -(grid_x + grid_y) * tile_height / 2 + z * level_height
+depth    = z * level_depth_stride + y_sort(x, y) + layer_depth + local_depth_offset
+```
+
+Current level indexing is zero-based in engine data: `z = 0` is ground floor, `z = 1` is the next level. User-facing editor labels may later display these as Floor 1, Floor 2, and so on.
 
 ## Canonical Isometric Directions
 
@@ -179,7 +197,11 @@ Later, add local avoidance for NPCs if needed. Do not start with complex physics
 Current implementation:
 
 - `WorldMap` owns tile and prop blockage.
+- `WorldMap` stores blockage per `(x, y, z)` level.
+- `WorldMap` stores edge-wall blockage per `(x, y, z, edge)` so a wall can block crossing between two cells without occupying either cell.
 - `universe::physics` owns shared kinematic movement, actor body radius checks, map clamping, and simple slide-on-collision response.
+- Actor movement checks collision on the actor's current `z` level.
+- Actor movement checks edge-wall crossings between adjacent rounded cells.
 - Actors choose intent and speed, but they do not decide how collision is resolved.
 - Gameplay rules should consume positions and outcomes, not reimplement movement.
 
@@ -237,14 +259,28 @@ For Bevy, keep the same concept but implement it in map data, not renderer-speci
 
 ## Multi-Floor Direction
 
-Floors should be 1-based in design data:
+The universe now supports discrete `z` levels:
 
-- Floor 1, Floor 2, and so on.
+- `GridPosition` carries `z`.
+- `WorldMap` stores collision per level.
+- World data can declare explicit collision cells for editor-authored blockers or walkability overrides.
+- `WorldMap` stores edge walls per level and direction.
+- World documents can declare `levels`.
+- Tile regions, props, stations, zones, and prefab instances can declare `z`.
+- Seat and entrance markers are `NavPoint { value, z }`, not raw `Vec2`.
+- World documents can declare vertical links such as stairs and ladders.
+- `E` traverses a nearby vertical link between its endpoints.
+- Customers can route to a destination on another level through a direct vertical link.
+- World visibility hides levels above the active player/editor level, then applies cutaway rules.
 - Higher floors are visually offset, not sorted by one-off overrides.
-- Only the current floor should have active wall collision.
-- Other floors can be faded, hidden, or shown according to inside/outside state.
 
-This is long-term work, but the foundation should not block it.
+Remaining multi-floor work:
+
+- Multi-step pathfinding across several vertical links.
+- Door/window semantics on edge walls.
+- Dedicated stair/ladder/railing visuals and editor palette categories.
+- Better editor filtering controls for showing only current floor, current-and-below, or all floors.
+- Basement and roof-specific visibility policies.
 
 ## Object Identity
 

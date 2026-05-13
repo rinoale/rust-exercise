@@ -2,14 +2,23 @@ use bevy::prelude::*;
 
 use crate::actors::{ActorAnimation, ActorVisualMotion, Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
-use crate::gameplay::{DirtySpill, Station, StationActionCatalog, StationCooldown, TavernState};
+use crate::gameplay::{
+    DirtySpill, Station, StationActionCatalog, StationCooldown, TavernState,
+    vertical_link_destination,
+};
 use crate::universe::{DebugSettings, GridPosition, distance_grid};
+use crate::world::{
+    PrefabCatalog, SceneEditorState, WorldBlueprint, WorldDocument, WorldRuntimeStatus,
+};
 
 #[derive(Component)]
 pub(super) struct HudText;
 
 #[derive(Component)]
 pub(super) struct PromptText;
+
+#[derive(Component)]
+pub(super) struct EditorText;
 
 pub(super) fn setup_ui(mut commands: Commands) {
     commands
@@ -55,6 +64,28 @@ pub(super) fn setup_ui(mut commands: Commands) {
             TextColor(Color::srgb(0.98, 0.88, 0.58)),
             PromptText,
         ));
+
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(16.0),
+                top: Val::Px(16.0),
+                width: Val::Px(390.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.035, 0.032, 0.028, 0.68)),
+        ))
+        .with_child((
+            Text::new(""),
+            TextFont {
+                font_size: 15.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.78, 0.9, 0.95)),
+            EditorText,
+        ));
 }
 
 pub(super) fn update_ui(
@@ -66,8 +97,14 @@ pub(super) fn update_ui(
     stations: Query<(&Station, &StationCooldown, &GridPosition)>,
     spills: Query<(&DirtySpill, &GridPosition)>,
     station_actions: Res<StationActionCatalog>,
+    blueprint: Res<WorldBlueprint>,
+    editor_state: Option<Res<SceneEditorState>>,
+    prefab_catalog: Option<Res<PrefabCatalog>>,
+    world_document: Option<Res<WorldDocument>>,
+    runtime_status: Option<Res<WorldRuntimeStatus>>,
     mut hud_text: Query<&mut Text, With<HudText>>,
     mut prompt_text: Query<&mut Text, (With<PromptText>, Without<HudText>)>,
+    mut editor_text: Query<&mut Text, (With<EditorText>, Without<HudText>, Without<PromptText>)>,
 ) {
     if let Ok(mut text) = hud_text.get_single_mut() {
         let total_guests = customers.iter().count();
@@ -110,6 +147,16 @@ pub(super) fn update_ui(
             &stations,
             &spills,
             &station_actions,
+            &blueprint,
+        );
+    }
+
+    if let Ok(mut text) = editor_text.get_single_mut() {
+        **text = editor_status_text(
+            editor_state.as_deref(),
+            prefab_catalog.as_deref(),
+            world_document.as_deref(),
+            runtime_status.as_deref(),
         );
     }
 }
@@ -120,14 +167,22 @@ fn interaction_prompt(
     stations: &Query<(&Station, &StationCooldown, &GridPosition)>,
     spills: &Query<(&DirtySpill, &GridPosition)>,
     station_actions: &StationActionCatalog,
+    blueprint: &WorldBlueprint,
 ) -> String {
     let Ok(player_position) = player_query.get_single() else {
         return String::new();
     };
     let player_grid = player_position.value;
 
+    if let Some((_, label, destination)) =
+        vertical_link_destination(player_grid, player_position.z, &blueprint.vertical_links)
+    {
+        return format!("E: Use {label} to level {}", destination.z);
+    }
+
     for (customer, customer_position) in customers {
         if customer.state == CustomerState::Waiting
+            && customer_position.z == player_position.z
             && distance_grid(player_grid, customer_position.value) <= INTERACT_RADIUS
         {
             return format!("E: Serve {}", customer.order.label());
@@ -135,13 +190,17 @@ fn interaction_prompt(
     }
 
     for (_, spill_position) in spills {
-        if distance_grid(player_grid, spill_position.value) <= INTERACT_RADIUS {
+        if spill_position.z == player_position.z
+            && distance_grid(player_grid, spill_position.value) <= INTERACT_RADIUS
+        {
             return "E: Clean spill".to_string();
         }
     }
 
     for (station, cooldown, station_position) in stations {
-        if distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS {
+        if station_position.z == player_position.z
+            && distance_grid(player_grid, station_position.value) <= INTERACT_RADIUS
+        {
             if let Some(remaining) = cooldown.remaining_seconds() {
                 return format!("{} cooling down: {remaining:.0}s", station.kind.label());
             }
@@ -197,4 +256,48 @@ fn debug_status_line(
 
 fn on_off(value: bool) -> &'static str {
     if value { "on" } else { "off" }
+}
+
+fn editor_status_text(
+    editor: Option<&SceneEditorState>,
+    prefabs: Option<&PrefabCatalog>,
+    document: Option<&WorldDocument>,
+    runtime_status: Option<&WorldRuntimeStatus>,
+) -> String {
+    let Some(editor) = editor else {
+        return String::new();
+    };
+
+    let status = runtime_status
+        .map(|status| status.last_message.as_str())
+        .unwrap_or("");
+
+    if !editor.enabled {
+        if status.is_empty() {
+            return "F10: Editor".to_string();
+        }
+        return format!("F10: Editor\n{status}");
+    }
+
+    let brush = match (document, prefabs) {
+        (Some(document), Some(prefabs)) => editor.active_brush_label(document, prefabs),
+        (_, Some(prefabs)) => format!("prefab {}", editor.selected_prefab_label(prefabs)),
+        _ => "no document".to_string(),
+    };
+    let dirty = if editor.dirty { "dirty" } else { "saved" };
+    let selected = editor.selected_label();
+
+    format!(
+        "Editor {dirty}  Tool {}\nCursor {},{},{}  Brush {brush}\nSelected {selected}\nUse toolbar buttons, left-click scene to apply, right-click scene to select.\nScenes opens the selector; Empty clears to a no-ground scene.\nPgUp/PgDn level  F8 validate  F9 save  F5 reload  F10 close\n{}{}",
+        editor.tool_label(),
+        editor.cursor.x,
+        editor.cursor.y,
+        editor.cursor_z,
+        editor.message,
+        if status.is_empty() {
+            String::new()
+        } else {
+            format!("\n{status}")
+        }
+    )
 }

@@ -40,6 +40,7 @@ Goal: Build the rendering and world model needed for a Project Zomboid-like view
 Deliverables:
 
 - [x] Grid position model separated from render transforms.
+- [x] Grid position and world collision support discrete `z` levels for stacked floors/walls.
 - [x] Tile layers include the full target set: ground, floor, decal, wall, roof, prop, character, overlay.
 - [x] Consistent sprite anchors for tiles, props, walls, and characters.
 - [x] Y-sorted draw ordering for characters and props.
@@ -193,7 +194,7 @@ Done when:
 
 ## Milestone 8: In-Game Scene Editor And Content Authoring
 
-Status: Not started.
+Status: Started. Stable asset IDs, prefab/archetype data, explicit world launch, editor mode, scene selector, editor placement tools, save, and manual hot reload are in place. Richer validation, metadata inspector editing, undo/redo, and full editor polish remain.
 
 Goal: Let scenes, object placement, collision footprints, station markers, and visual tuning change through data files without Rust source edits or rebuilds.
 
@@ -201,23 +202,32 @@ Principle: Rust owns engine behavior. World `.ron` files and editor tools own co
 
 Deliverables:
 
-- [ ] Launch the game with an explicit world path, for example `--world data/worlds/demo_tavern.ron`.
-- [ ] Editor mode toggle that does not break normal play mode.
-- [ ] Grid cursor with tile coordinate readout.
-- [ ] Palette for existing visual asset ids: tiles, walls, roofs, props, decals, stations, and markers.
-- [ ] Place, move, duplicate, and delete world objects from the editor.
+- [x] Asset registry with stable sprite IDs, asset kinds, path validation, and missing-file errors.
+- [x] Prefab/archetype data format for reusable world objects and station-ready props.
+- [x] Launch the game with an explicit world path, for example `--world data/worlds/demo_tavern.ron`.
+- [x] Editor mode toggle that does not break normal play mode.
+- [x] Editor startup scene selector with a zero-base empty scene option.
+- [x] Grid cursor with `x/y/z` coordinate readout.
+- [x] Mouse-first editor toolbar with visible tool/action buttons and scene click placement/selection.
+- [x] Palette for prefab IDs backed by registered visual asset IDs.
+- [x] Place, move, duplicate, and delete prefab-backed world objects from the editor.
+- [x] World data supports z-aware navigation markers, vertical links, edge walls, and floor visibility filtering.
+- [x] Editor tools for tile painting, collision cells, edge walls, markers, vertical links, zones, and world level count.
+- [x] Empty scene creation with no default ground tiles.
 - [ ] Edit per-object basics: grid position, layer, anchor preset, render size, depth offset, collision footprint, station id, cutaway zone, and marker id.
-- [ ] Save the edited world back to a `.ron` file.
-- [ ] Reload the current world file without recompiling.
-- [ ] Validation report before save: missing asset id, invalid anchor/layer, overlapping blocking objects, station without gameplay definition, marker id duplicates.
+- [x] Save the edited world back to a `.ron` file.
+- [x] Reload the current world file without recompiling.
+- [x] Hot reload the asset registry, prefab files, and current world after validation succeeds.
+- [x] Validation report before save for load/build errors such as missing assets, invalid z values, invalid links, and malformed world data.
+- [ ] Rich semantic validation: overlapping blocking objects, station without gameplay definition, marker id duplicates.
 - [ ] Undo/redo for recent editor actions.
 - [ ] Editor-only debug overlays for collision, anchors, depth sort order, cutaway zones, and station interaction radius.
-- [ ] Documentation for authoring a new scene from scratch.
+- [x] Documentation for authoring a new scene from scratch.
 
 Done when:
 
-- [ ] A new room or exterior scene can be created by running the editor, not by editing Rust code.
-- [ ] Changing object position, collision, or station placement does not require `cargo build`.
+- [x] A new room or exterior scene can be created by running the editor, not by editing Rust code.
+- [x] Changing object position, collision, markers, edge walls, tiles, zones, or vertical links does not require `cargo build`.
 - [ ] The saved `.ron` can be loaded by normal play mode.
 - [ ] A content mistake gives a readable validation error instead of a silent broken scene.
 

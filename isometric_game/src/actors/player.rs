@@ -4,8 +4,8 @@ use crate::actors::{ActorAnimation, ActorVisualMotion};
 use crate::config::PLAYER_SPEED;
 use crate::rendering::{character_sprite, character_y_offset};
 use crate::universe::{
-    CollisionShape, GridPosition, IsoRenderable, UniverseLayer, WorldMap, iso_translation,
-    move_with_collision,
+    CollisionShape, GridPosition, IsoRenderable, UniverseLayer, WorldMap, iso_translation_at,
+    move_with_collision_at,
 };
 
 #[derive(Component)]
@@ -20,7 +20,7 @@ pub(super) fn setup_player(mut commands: Commands, asset_server: Res<AssetServer
         character_sprite(asset_server.load("characters/bartender_turnaround/idle_se.png")),
         GridPosition::new(start),
         IsoRenderable::new(y_offset, layer),
-        Transform::from_translation(iso_translation(start, y_offset, layer, 0.0)),
+        Transform::from_translation(iso_translation_at(start, 0, y_offset, layer, 0.0)),
         ActorVisualMotion::new(start),
         ActorAnimation::new("bartender"),
         Player,
@@ -57,6 +57,12 @@ pub(super) fn player_movement(
     }
 
     let step = direction.normalize() * PLAYER_SPEED * time.delta_secs();
-    grid_position.value =
-        move_with_collision(grid_position.value, step, &world_map, CollisionShape::ACTOR).end;
+    grid_position.value = move_with_collision_at(
+        grid_position.value,
+        step,
+        grid_position.z,
+        &world_map,
+        CollisionShape::ACTOR,
+    )
+    .end;
 }

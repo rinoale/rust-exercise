@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use crate::GameSet;
 
 pub use interactions::DirtySpill;
+pub(crate) use interactions::vertical_link_destination;
 pub use orders::Order;
 pub use resources::{ResourceChange, TavernResource, missing_requirements_label};
 pub use scripted_playback::{ScriptedPlaybackConfig, ScriptedPlaybackPlugin};

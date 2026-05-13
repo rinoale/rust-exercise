@@ -48,6 +48,78 @@ Directional suffixes must follow the canonical isometric direction rule in [Tech
 
 For prototype assets that already exist, short names such as `tavern_floor.png` are acceptable. New production-facing assets should follow the longer form.
 
+## Asset Registry
+
+Runtime sprite assets should be registered in:
+
+```text
+data/assets/registry.ron
+```
+
+The registry maps stable IDs to current file paths and editor palette kinds:
+
+```ron
+(id: "prop.bar_counter", kind: Prop, path: "props/bar_counter.png")
+```
+
+Rules:
+
+- Treat the ID as the permanent reference. Rename or move the PNG by changing the registry path, not world files.
+- Use lowercase dot-separated IDs: `tile.tavern.floor_worn_a`, `wall.plank.back`, `prop.bar_counter`.
+- Pick `kind` for editor grouping: `Tile`, `Wall`, `Roof`, `Prop`, `Decal`, `Character`, `Item`, or `Ui`.
+- World and future prefab files should use `asset_id: "..."`.
+- Raw `asset: "path.png"` remains a legacy compatibility field only.
+- Registry paths are relative to `assets/` and must point at existing PNG files.
+
+## Prefabs And World Instances
+
+Reusable placed objects belong in:
+
+```text
+data/prefabs/world_objects.ron
+```
+
+Use prefabs for any object that may be placed more than once or edited in the scene editor. A prefab combines the registered visual asset with placement defaults:
+
+- render size
+- layer
+- anchor
+- depth offset
+- shadow flag
+- collision footprint
+- cutaway rule
+- optional station behavior
+
+World files should place prefab instances instead of repeating those defaults:
+
+```ron
+(id: "table_001", prefab: "prop.table_round", grid: [10.0, 9.0], z: 0)
+```
+
+The instance ID is stable editor identity. Do not use list position as identity. `z` is the logical level/elevation; it is not a render depth override.
+
+Scene markers are also z-aware. Use the detailed marker form when a seat, entrance, queue point, stair endpoint, or future AI marker lives above ground level:
+
+```ron
+(grid: [12.0, 8.5], z: 1)
+```
+
+Wall art can be placed as an edge wall when the wall should block movement across a boundary instead of occupying a whole cell. The edge direction uses the project isometric direction rule:
+
+```ron
+(grid: [5, 4], z: 0, direction: S, style: "back_wall")
+```
+
+Keep collision meaning in world data. The wall image should not be the source of truth for whether a boundary blocks actors.
+
+Use explicit collision cells when a blocker or walkability override has no visible object:
+
+```ron
+(grid: [9, 7], z: 0, blocked: true)
+```
+
+This is an editor-authored gameplay rule, not an art asset.
+
 ## Prompt Provenance
 
 Generated concept images that become art-direction references should keep their exact prompt beside the image as a sidecar file:

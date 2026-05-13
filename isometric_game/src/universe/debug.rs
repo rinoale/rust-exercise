@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::config::{TILE_HEIGHT, TILE_WIDTH};
-use crate::universe::{GridPosition, IsoRenderable, UniverseLayer, WorldMap, grid_to_screen};
+use crate::universe::{GridPosition, IsoRenderable, UniverseLayer, WorldMap, grid_to_screen_at};
 
 #[derive(Resource)]
 pub struct DebugSettings {
@@ -47,32 +47,35 @@ pub(super) fn draw_debug_universe(
     renderables: Query<(&GridPosition, &IsoRenderable)>,
 ) {
     if debug.show_grid || debug.show_collision {
-        for y in 0..world_map.height {
-            for x in 0..world_map.width {
-                let blocked = world_map.is_blocked(x, y);
-                let color = if debug.show_collision {
-                    if blocked {
-                        Color::srgba(0.95, 0.16, 0.12, 0.9)
+        for z in 0..world_map.levels {
+            for y in 0..world_map.height {
+                for x in 0..world_map.width {
+                    let blocked = world_map.is_blocked_at(x, y, z);
+                    let level_alpha = (0.34 - z as f32 * 0.07).max(0.12);
+                    let color = if debug.show_collision {
+                        if blocked {
+                            Color::srgba(0.95, 0.16, 0.12, 0.9)
+                        } else {
+                            Color::srgba(0.25, 0.85, 0.42, level_alpha)
+                        }
                     } else {
-                        Color::srgba(0.25, 0.85, 0.42, 0.42)
-                    }
-                } else {
-                    Color::srgba(0.85, 0.85, 0.78, 0.28)
-                };
-                draw_debug_cell(&mut gizmos, Vec2::new(x as f32, y as f32), color);
+                        Color::srgba(0.85, 0.85, 0.78, level_alpha)
+                    };
+                    draw_debug_cell(&mut gizmos, Vec2::new(x as f32, y as f32), z, color);
 
-                if debug.show_collision && blocked {
-                    let center = grid_to_screen(Vec2::new(x as f32, y as f32));
-                    gizmos.line_2d(
-                        center + Vec2::new(-10.0, -5.0),
-                        center + Vec2::new(10.0, 5.0),
-                        Color::srgba(1.0, 0.05, 0.03, 0.85),
-                    );
-                    gizmos.line_2d(
-                        center + Vec2::new(-10.0, 5.0),
-                        center + Vec2::new(10.0, -5.0),
-                        Color::srgba(1.0, 0.05, 0.03, 0.85),
-                    );
+                    if debug.show_collision && blocked {
+                        let center = grid_to_screen_at(Vec2::new(x as f32, y as f32), z);
+                        gizmos.line_2d(
+                            center + Vec2::new(-10.0, -5.0),
+                            center + Vec2::new(10.0, 5.0),
+                            Color::srgba(1.0, 0.05, 0.03, 0.85),
+                        );
+                        gizmos.line_2d(
+                            center + Vec2::new(-10.0, 5.0),
+                            center + Vec2::new(10.0, -5.0),
+                            Color::srgba(1.0, 0.05, 0.03, 0.85),
+                        );
+                    }
                 }
             }
         }
@@ -80,7 +83,7 @@ pub(super) fn draw_debug_universe(
 
     if debug.show_depth_anchors {
         for (grid_position, renderable) in &renderables {
-            let anchor = grid_to_screen(grid_position.value);
+            let anchor = grid_to_screen_at(grid_position.value, grid_position.z);
             let color = match renderable.layer {
                 UniverseLayer::Ground | UniverseLayer::Floor => Color::srgba(0.8, 0.8, 0.8, 0.35),
                 UniverseLayer::Decal => Color::srgba(0.35, 0.75, 1.0, 0.75),
@@ -100,8 +103,8 @@ pub(super) fn draw_debug_universe(
     }
 }
 
-fn draw_debug_cell(gizmos: &mut Gizmos, grid: Vec2, color: Color) {
-    let center = grid_to_screen(grid);
+fn draw_debug_cell(gizmos: &mut Gizmos, grid: Vec2, z: i32, color: Color) {
+    let center = grid_to_screen_at(grid, z);
     let top = center + Vec2::new(0.0, TILE_HEIGHT * 0.5);
     let right = center + Vec2::new(TILE_WIDTH * 0.5, 0.0);
     let bottom = center + Vec2::new(0.0, -TILE_HEIGHT * 0.5);

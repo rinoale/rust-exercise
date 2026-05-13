@@ -7,8 +7,8 @@ use crate::gameplay::StationKind;
 use crate::rendering::RenderAnchor;
 use crate::universe::UniverseLayer;
 use crate::world::blueprint::{
-    CutawayRule, Footprint, PropPlacement, PropVisual, StationPlacement, TileKind, TilePlacement,
-    WorldBlueprint, WorldZone,
+    CutawayRule, Footprint, NavPoint, PropPlacement, PropVisual, StationPlacement, TileKind,
+    TilePlacement, WorldBlueprint, WorldZone,
 };
 
 pub fn demo_tavern_blueprint() -> WorldBlueprint {
@@ -54,10 +54,13 @@ fn add_tavern_shell(blueprint: &mut WorldBlueprint) {
     let highlight = Color::srgb(0.34, 0.26, 0.18);
 
     blueprint.add_prop(PropPlacement {
+        instance_id: None,
+        prefab_id: None,
         grid: Vec2::new(
             (TAVERN_MIN_X + TAVERN_MAX_X) as f32 * 0.5,
             (TAVERN_MIN_Y + TAVERN_MAX_Y) as f32 * 0.5,
         ),
+        z: 0,
         visual: PropVisual::MeshRect {
             size: Vec2::new(760.0, 280.0),
             color: Color::srgb(0.10, 0.08, 0.055),
@@ -234,8 +237,8 @@ fn add_markers(blueprint: &mut WorldBlueprint) {
         Vec2::new(14.1, 11.0),
         Vec2::new(16.4, 11.2),
     ] {
-        blueprint.add_seat(seat);
+        blueprint.add_seat(NavPoint::new(seat));
     }
 
-    blueprint.set_entrance(Vec2::new(20.8, 9.0));
+    blueprint.set_entrance(NavPoint::new(Vec2::new(20.8, 9.0)));
 }
