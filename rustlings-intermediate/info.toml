@@ -1,0 +1,133 @@
+format_version = 1
+
+welcome_message = """
+Welcome to Rustlings Intermediate.
+
+This course turns the intermediate notebook topics into small typing lectures.
+Open the current exercise, read the comments, fill the TODO bodies, then run
+`rustlings` or `rustlings run <exercise-name>` again.
+"""
+
+final_message = """
+You finished Rustlings Intermediate.
+
+You practiced generics, traits, lifetimes, closures, iterators, smart pointers,
+threaded word counting, CLI-style parsing, async-shaped code, testing, and
+intermediate concept quizzes.
+"""
+
+[[exercises]]
+name = "generics_stack"
+dir = "01_generics"
+hint = """
+Back the stack with `Vec<T>`. `push` delegates to `Vec::push`, `pop` delegates
+to `Vec::pop`, `peek` can use `Vec::last`, and the size helpers are `is_empty`
+and `len`.
+"""
+
+[[exercises]]
+name = "traits_shapes"
+dir = "02_traits"
+hint = """
+`Circle` area is `pi * r * r`, perimeter is `2 * pi * r`.
+`Rectangle` area is `width * height`, perimeter is `2 * (width + height)`.
+The summary function can format `shape.area()` and `shape.perimeter()`.
+"""
+
+[[exercises]]
+name = "lifetimes_text_processor"
+dir = "03_lifetimes"
+hint = """
+Store the input text as `&'a str`. `word_count` can call `split_whitespace`.
+`find_word` can delegate to `str::find`. `substring` can return
+`&self.text[start..end]`.
+"""
+
+[[exercises]]
+name = "closures_pipeline"
+dir = "04_closures"
+hint = """
+Consume the vector with `into_iter`, filter with the supplied predicate, map
+with the supplied mapper, and reduce with `fold(initial, reducer)`.
+"""
+
+[[exercises]]
+name = "iterators_fibonacci"
+dir = "05_iterators"
+hint = """
+Keep two numbers in the iterator state: the value to yield now and the next
+value. After yielding, advance them with addition. Then use `take`, `filter`,
+and `sum`.
+"""
+
+[[exercises]]
+name = "smart_pointers_tree"
+dir = "06_smart_pointers"
+hint = """
+`Rc<RefCell<TreeNode>>` lets many parents in the code hold a node handle while
+still mutating child lists. Borrow mutably to push a child, and borrow
+immutably while walking the tree.
+"""
+
+[[exercises]]
+name = "concurrency_word_count"
+dir = "07_concurrency"
+hint = """
+Normalize words first, split the owned words into chunks, send each chunk to a
+thread, send partial `HashMap`s back through a channel, then merge counts from
+the receiver.
+"""
+
+[[exercises]]
+name = "cli_parser"
+dir = "08_cli_libraries"
+hint = """
+Walk the argument list from left to right. Flags with values need to consume the
+next token. A bare token is the input path. Reject unknown flags, repeated input
+paths, missing values, and delimiters that are not exactly one character.
+"""
+
+[[exercises]]
+name = "async_status_plan"
+dir = "09_async_design"
+hint = """
+The fake client already returns an async result. Loop over the URLs, await each
+request, push successful status codes into a vector, and use `?` to return the
+first error.
+"""
+
+[[exercises]]
+name = "testing_calculator"
+dir = "10_testing_docs"
+hint = """
+The arithmetic methods mostly delegate to Rust operators. `divide` should
+return `Err(CalculatorError::DivideByZero)` when the divisor is zero and `Ok`
+otherwise.
+"""
+
+[[exercises]]
+name = "quiz1_generics_traits_lifetimes"
+dir = "quizzes"
+hint = """
+Generics conventionally use `T`, `Display` is for user-facing formatting,
+returned borrowed slices must be tied to an input reference, and monomorphized
+generics use static dispatch.
+"""
+
+[[exercises]]
+name = "quiz2_iterators_pointers_threads"
+dir = "quizzes"
+hint = """
+`collect` consumes an iterator into a collection, `FnMut` can mutate captured
+state, `Box`/`Rc`/`RefCell`/`Arc`/`Mutex` cover different ownership jobs, and
+channels are message passing.
+"""
+
+[[exercises]]
+name = "quiz3_libraries_testing"
+dir = "quizzes"
+hint = """
+Map jobs to common crates: serde for JSON, clap for CLI arguments, regex for
+text patterns, tokio for async runtime, and reqwest for HTTP. Unit tests sit
+near code, integration tests go in `tests/`, and doc tests come from examples.
+"""

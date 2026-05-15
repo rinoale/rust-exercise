@@ -1,0 +1,37 @@
+# Don't edit the `bin` list manually! It is updated by `rustlings dev update`
+bin = [
+  { name = "generics_stack", path = "exercises/01_generics/generics_stack.rs" },
+  { name = "generics_stack_sol", path = "solutions/01_generics/generics_stack.rs" },
+  { name = "traits_shapes", path = "exercises/02_traits/traits_shapes.rs" },
+  { name = "traits_shapes_sol", path = "solutions/02_traits/traits_shapes.rs" },
+  { name = "lifetimes_text_processor", path = "exercises/03_lifetimes/lifetimes_text_processor.rs" },
+  { name = "lifetimes_text_processor_sol", path = "solutions/03_lifetimes/lifetimes_text_processor.rs" },
+  { name = "closures_pipeline", path = "exercises/04_closures/closures_pipeline.rs" },
+  { name = "closures_pipeline_sol", path = "solutions/04_closures/closures_pipeline.rs" },
+  { name = "iterators_fibonacci", path = "exercises/05_iterators/iterators_fibonacci.rs" },
+  { name = "iterators_fibonacci_sol", path = "solutions/05_iterators/iterators_fibonacci.rs" },
+  { name = "smart_pointers_tree", path = "exercises/06_smart_pointers/smart_pointers_tree.rs" },
+  { name = "smart_pointers_tree_sol", path = "solutions/06_smart_pointers/smart_pointers_tree.rs" },
+  { name = "concurrency_word_count", path = "exercises/07_concurrency/concurrency_word_count.rs" },
+  { name = "concurrency_word_count_sol", path = "solutions/07_concurrency/concurrency_word_count.rs" },
+  { name = "cli_parser", path = "exercises/08_cli_libraries/cli_parser.rs" },
+  { name = "cli_parser_sol", path = "solutions/08_cli_libraries/cli_parser.rs" },
+  { name = "async_status_plan", path = "exercises/09_async_design/async_status_plan.rs" },
+  { name = "async_status_plan_sol", path = "solutions/09_async_design/async_status_plan.rs" },
+  { name = "testing_calculator", path = "exercises/10_testing_docs/testing_calculator.rs" },
+  { name = "testing_calculator_sol", path = "solutions/10_testing_docs/testing_calculator.rs" },
+  { name = "quiz1_generics_traits_lifetimes", path = "exercises/quizzes/quiz1_generics_traits_lifetimes.rs" },
+  { name = "quiz1_generics_traits_lifetimes_sol", path = "solutions/quizzes/quiz1_generics_traits_lifetimes.rs" },
+  { name = "quiz2_iterators_pointers_threads", path = "exercises/quizzes/quiz2_iterators_pointers_threads.rs" },
+  { name = "quiz2_iterators_pointers_threads_sol", path = "solutions/quizzes/quiz2_iterators_pointers_threads.rs" },
+  { name = "quiz3_libraries_testing", path = "exercises/quizzes/quiz3_libraries_testing.rs" },
+  { name = "quiz3_libraries_testing_sol", path = "solutions/quizzes/quiz3_libraries_testing.rs" },
+]
+
+[package]
+name = "exercises"
+edition = "2024"
+# Don't publish the exercises on crates.io!
+publish = false
+
+[dependencies]

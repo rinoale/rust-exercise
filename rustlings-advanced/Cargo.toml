@@ -1,0 +1,37 @@
+# Don't edit the `bin` list manually! It is updated by `rustlings dev update`
+bin = [
+  { name = "associated_converters", path = "exercises/01_advanced_traits/associated_converters.rs" },
+  { name = "associated_converters_sol", path = "solutions/01_advanced_traits/associated_converters.rs" },
+  { name = "lifetime_views", path = "exercises/02_advanced_lifetimes/lifetime_views.rs" },
+  { name = "lifetime_views_sol", path = "solutions/02_advanced_lifetimes/lifetime_views.rs" },
+  { name = "unsafe_fixed_buffer", path = "exercises/03_unsafe_rust/unsafe_fixed_buffer.rs" },
+  { name = "unsafe_fixed_buffer_sol", path = "solutions/03_unsafe_rust/unsafe_fixed_buffer.rs" },
+  { name = "macro_json", path = "exercises/04_macros/macro_json.rs" },
+  { name = "macro_json_sol", path = "solutions/04_macros/macro_json.rs" },
+  { name = "async_scraper_plan", path = "exercises/05_async/async_scraper_plan.rs" },
+  { name = "async_scraper_plan_sol", path = "solutions/05_async/async_scraper_plan.rs" },
+  { name = "typestate_connection", path = "exercises/06_creational_patterns/typestate_connection.rs" },
+  { name = "typestate_connection_sol", path = "solutions/06_creational_patterns/typestate_connection.rs" },
+  { name = "middleware_chain", path = "exercises/07_structural_patterns/middleware_chain.rs" },
+  { name = "middleware_chain_sol", path = "solutions/07_structural_patterns/middleware_chain.rs" },
+  { name = "command_undo_redo", path = "exercises/08_behavioral_patterns/command_undo_redo.rs" },
+  { name = "command_undo_redo_sol", path = "solutions/08_behavioral_patterns/command_undo_redo.rs" },
+  { name = "blog_api_routes", path = "exercises/09_web_patterns/blog_api_routes.rs" },
+  { name = "blog_api_routes_sol", path = "solutions/09_web_patterns/blog_api_routes.rs" },
+  { name = "task_manager_architecture", path = "exercises/10_systems_tools/task_manager_architecture.rs" },
+  { name = "task_manager_architecture_sol", path = "solutions/10_systems_tools/task_manager_architecture.rs" },
+  { name = "quiz1_traits_lifetimes", path = "exercises/quizzes/quiz1_traits_lifetimes.rs" },
+  { name = "quiz1_traits_lifetimes_sol", path = "solutions/quizzes/quiz1_traits_lifetimes.rs" },
+  { name = "quiz2_unsafe_macros_async", path = "exercises/quizzes/quiz2_unsafe_macros_async.rs" },
+  { name = "quiz2_unsafe_macros_async_sol", path = "solutions/quizzes/quiz2_unsafe_macros_async.rs" },
+  { name = "quiz3_patterns_systems", path = "exercises/quizzes/quiz3_patterns_systems.rs" },
+  { name = "quiz3_patterns_systems_sol", path = "solutions/quizzes/quiz3_patterns_systems.rs" },
+]
+
+[package]
+name = "exercises"
+edition = "2024"
+# Don't publish the exercises on crates.io!
+publish = false
+
+[dependencies]

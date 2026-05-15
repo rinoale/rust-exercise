@@ -1,0 +1,123 @@
+format_version = 1
+
+welcome_message = """
+Welcome to Rustlings Advanced.
+
+This course turns the advanced notebook into Rustlings-style typing lectures.
+Read the comments in each exercise, replace the TODOs, and rerun Rustlings for
+feedback. Quiz exercises are mixed in to check concepts across several topics.
+"""
+
+final_message = """
+You finished Rustlings Advanced.
+
+You practiced advanced traits, lifetimes, unsafe abstractions, macros, async
+shapes, typestate, decorator and command patterns, web API design, systems-tool
+architecture, and concept quizzes.
+"""
+
+[[exercises]]
+name = "associated_converters"
+dir = "01_advanced_traits"
+hint = """
+Use an associated type on `Converter`. `String` can call `into_bytes`, `i32`
+can call `to_string`, and the newtype wrapper can sum its inner vector.
+"""
+
+[[exercises]]
+name = "lifetime_views"
+dir = "02_advanced_lifetimes"
+hint = """
+Store owned text in the cache. Views borrow from `self`, so `view` returns
+`&str` and `split_view` can collect `self.text.split_whitespace()`.
+"""
+
+[[exercises]]
+name = "unsafe_fixed_buffer"
+dir = "03_unsafe_rust"
+hint = """
+Use `MaybeUninit::write` to initialize a slot and `assume_init_read` to move a
+value out. Keep the public API safe and drop initialized items in `Drop`.
+"""
+
+[[exercises]]
+name = "macro_json"
+dir = "04_macros"
+hint = """
+Write macro arms for `null`, booleans, arrays, objects, and literal scalars.
+The object arm can create a `HashMap` and recursively call `json!` for values.
+"""
+
+[[exercises]]
+name = "async_scraper_plan"
+dir = "05_async"
+hint = """
+Reject zero concurrency, split URLs into chunks of `concurrency_limit`, then
+await the fake client for every URL and collect `Page` values.
+"""
+
+[[exercises]]
+name = "typestate_connection"
+dir = "06_creational_patterns"
+hint = """
+Each state transition consumes `Connection<State>` and returns
+`Connection<NextState>`. Only implement methods on the state where they are
+valid.
+"""
+
+[[exercises]]
+name = "middleware_chain"
+dir = "07_structural_patterns"
+hint = """
+Each middleware owns another `Handler`. Auth should reject requests that do not
+start with `AUTH:`, otherwise it delegates to the inner handler.
+"""
+
+[[exercises]]
+name = "command_undo_redo"
+dir = "08_behavioral_patterns"
+hint = """
+Store executed commands with the value from before execution. Undo restores the
+old value and moves the command to the redo stack. Redo executes it again.
+"""
+
+[[exercises]]
+name = "blog_api_routes"
+dir = "09_web_patterns"
+hint = """
+Model each REST endpoint as a `Route`. Convert domain errors into HTTP-like
+status codes with a match expression.
+"""
+
+[[exercises]]
+name = "task_manager_architecture"
+dir = "10_systems_tools"
+hint = """
+Return the project files from the prompt, parse subcommands from tokens, and
+model status filtering with an enum.
+"""
+
+[[exercises]]
+name = "quiz1_traits_lifetimes"
+dir = "quizzes"
+hint = """
+Associated types reduce repeated generic parameters, `dyn Trait` uses dynamic
+dispatch, and `for<'a>` means a callback works for any lifetime.
+"""
+
+[[exercises]]
+name = "quiz2_unsafe_macros_async"
+dir = "quizzes"
+hint = """
+Unsafe has five specific powers, declarative macros use `macro_rules!`, and an
+async function returns a lazy future until it is polled or awaited.
+"""
+
+[[exercises]]
+name = "quiz3_patterns_systems"
+dir = "quizzes"
+hint = """
+Typestate encodes valid transitions in types, decorator wraps behavior,
+command supports undo/redo, and common production crates map to CLI, SQL,
+logging, and serialization jobs.
+"""
