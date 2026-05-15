@@ -7,7 +7,7 @@ mod physics;
 
 use bevy::prelude::*;
 
-use crate::GameSet;
+use crate::{GameSet, app_not_intro};
 
 pub use coordinates::{distance_grid, grid_to_screen_at, iso_translation_at, screen_to_grid_at};
 pub use debug::DebugSettings;
@@ -25,9 +25,13 @@ impl Plugin for UniversePlugin {
         app.init_resource::<DebugSettings>().add_systems(
             Update,
             (
-                toggle_debug_settings.in_set(GameSet::Input),
+                toggle_debug_settings
+                    .run_if(app_not_intro)
+                    .in_set(GameSet::Input),
                 apply_iso_transforms.in_set(GameSet::RenderSync),
-                draw_debug_universe.in_set(GameSet::Debug),
+                draw_debug_universe
+                    .run_if(app_not_intro)
+                    .in_set(GameSet::Debug),
             ),
         );
     }

@@ -8,7 +8,7 @@ mod stations;
 
 use bevy::prelude::*;
 
-use crate::GameSet;
+use crate::{GameSet, app_in_play_mode};
 
 pub use interactions::DirtySpill;
 pub(crate) use interactions::vertical_link_destination;
@@ -47,6 +47,7 @@ impl Plugin for GameplayPlugin {
                     cleanup_notice,
                 )
                     .chain()
+                    .run_if(app_in_play_mode)
                     .in_set(GameSet::Gameplay),
             );
     }

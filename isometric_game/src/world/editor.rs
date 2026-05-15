@@ -3,6 +3,7 @@ use std::fs;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::AppMode;
 use crate::config::{TILE_HEIGHT, TILE_WIDTH};
 use crate::rendering::AssetRegistry;
 use crate::universe::{GridPosition, grid_to_screen_at, screen_to_grid_at};
@@ -20,8 +21,11 @@ use crate::world::runtime::{
 
 use super::camera::MainCamera;
 
-const EDITOR_TOP_BAR_HEIGHT: f32 = 150.0;
-const EDITOR_SIDE_PANEL_WIDTH: f32 = 430.0;
+const EDITOR_TOP_SAFE_HEIGHT: f32 = 18.0;
+const EDITOR_LEFT_PANEL_WIDTH: f32 = 346.0;
+const EDITOR_RIGHT_PANEL_WIDTH: f32 = 420.0;
+const EDITOR_CONTEXT_MENU_WIDTH: f32 = 238.0;
+const EDITOR_CONTEXT_MENU_HEIGHT: f32 = 365.0;
 
 #[derive(Resource)]
 pub struct SceneEditorState {
@@ -266,8 +270,26 @@ pub struct SceneEntry {
     pub path: String,
 }
 
+#[derive(Resource, Clone, Copy)]
+pub struct SceneEditorContextMenuState {
+    pub visible: bool,
+    pub position: Vec2,
+}
+
+impl Default for SceneEditorContextMenuState {
+    fn default() -> Self {
+        Self {
+            visible: false,
+            position: Vec2::new(360.0, 160.0),
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct EditorUiRoot;
+
+#[derive(Component)]
+pub struct EditorContextMenuRoot;
 
 #[derive(Component)]
 pub struct SceneSelectorRoot;
@@ -298,6 +320,7 @@ pub enum EditorButtonAction {
     Validate,
     Save,
     Reload,
+    CloseContextMenu,
 }
 
 pub fn setup_scene_editor_ui(mut commands: Commands) {
@@ -306,27 +329,35 @@ pub fn setup_scene_editor_ui(mut commands: Commands) {
             EditorUiRoot,
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Px(360.0),
-                right: Val::Px(430.0),
-                top: Val::Px(10.0),
-                padding: UiRect::all(Val::Px(8.0)),
-                row_gap: Val::Px(6.0),
-                column_gap: Val::Px(6.0),
+                left: Val::Px(14.0),
+                top: Val::Px(14.0),
+                width: Val::Px(318.0),
+                padding: UiRect::all(Val::Px(12.0)),
+                row_gap: Val::Px(9.0),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.028, 0.028, 0.024, 0.86)),
+            BackgroundColor(Color::srgba(0.025, 0.025, 0.022, 0.92)),
             Visibility::Hidden,
         ))
         .with_children(|root| {
             root.spawn((
-                Text::new("Scene Editor"),
+                Text::new("Sandbox Scene Editor"),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 20.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.92, 0.88, 0.74)),
             ));
+            root.spawn((
+                Text::new("Left-click sets the cursor. Right-click opens actions."),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.7, 0.7, 0.64)),
+            ));
+            spawn_editor_section_label(root, "Tools");
             spawn_editor_button_row(
                 root,
                 &[
@@ -340,18 +371,18 @@ pub fn setup_scene_editor_ui(mut commands: Commands) {
                     ("World", EditorButtonAction::Tool(EditorTool::World)),
                 ],
             );
+            spawn_editor_section_label(root, "Actions");
             spawn_editor_button_row(
                 root,
                 &[
-                    ("Scenes", EditorButtonAction::OpenSceneSelector),
                     ("Apply", EditorButtonAction::Apply),
                     ("Select", EditorButtonAction::Select),
                     ("Move", EditorButtonAction::Move),
                     ("Copy", EditorButtonAction::Duplicate),
                     ("Delete", EditorButtonAction::Delete),
-                    ("Empty", EditorButtonAction::NewEmpty),
                 ],
             );
+            spawn_editor_section_label(root, "Brush");
             spawn_editor_button_row(
                 root,
                 &[
@@ -359,14 +390,39 @@ pub fn setup_scene_editor_ui(mut commands: Commands) {
                     ("Next", EditorButtonAction::NextBrush),
                     ("Rotate", EditorButtonAction::Rotate),
                     ("Two-way", EditorButtonAction::ToggleTwoWay),
-                    ("+Level", EditorButtonAction::AddLevel),
-                    ("-Level", EditorButtonAction::RemoveLevel),
+                ],
+            );
+            spawn_editor_section_label(root, "Scene");
+            spawn_editor_button_row(
+                root,
+                &[
+                    ("Scenes", EditorButtonAction::OpenSceneSelector),
+                    ("Empty", EditorButtonAction::NewEmpty),
                     ("Check", EditorButtonAction::Validate),
                     ("Save", EditorButtonAction::Save),
                     ("Reload", EditorButtonAction::Reload),
                 ],
             );
+            spawn_editor_section_label(root, "World");
+            spawn_editor_button_row(
+                root,
+                &[
+                    ("+Level", EditorButtonAction::AddLevel),
+                    ("-Level", EditorButtonAction::RemoveLevel),
+                ],
+            );
         });
+}
+
+fn spawn_editor_section_label(parent: &mut ChildBuilder, label: &str) {
+    parent.spawn((
+        Text::new(label),
+        TextFont {
+            font_size: 12.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.55, 0.68, 0.72)),
+    ));
 }
 
 fn spawn_editor_button_row(parent: &mut ChildBuilder, buttons: &[(&str, EditorButtonAction)]) {
@@ -397,6 +453,69 @@ fn spawn_editor_button(parent: &mut ChildBuilder, label: &str, action: EditorBut
                 ..default()
             },
             BackgroundColor(Color::srgba(0.16, 0.15, 0.13, 0.95)),
+        ))
+        .with_child((
+            Text::new(label),
+            TextFont {
+                font_size: 13.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.9, 0.86, 0.76)),
+        ));
+}
+
+pub fn setup_scene_editor_context_menu_ui(mut commands: Commands) {
+    commands
+        .spawn((
+            EditorContextMenuRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(360.0),
+                top: Val::Px(160.0),
+                width: Val::Px(EDITOR_CONTEXT_MENU_WIDTH),
+                padding: UiRect::all(Val::Px(8.0)),
+                row_gap: Val::Px(6.0),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.018, 0.018, 0.016, 0.96)),
+            Visibility::Hidden,
+        ))
+        .with_children(|root| {
+            root.spawn((
+                Text::new("Cursor Actions"),
+                TextFont {
+                    font_size: 15.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.92, 0.88, 0.74)),
+            ));
+            spawn_context_button(root, "Apply Tool Here", EditorButtonAction::Apply);
+            spawn_context_button(root, "Select Here", EditorButtonAction::Select);
+            spawn_context_button(root, "Move Selection Here", EditorButtonAction::Move);
+            spawn_context_button(root, "Duplicate Here", EditorButtonAction::Duplicate);
+            spawn_context_button(root, "Delete Selection", EditorButtonAction::Delete);
+            spawn_context_button(root, "Next Brush", EditorButtonAction::NextBrush);
+            spawn_context_button(root, "Rotate", EditorButtonAction::Rotate);
+            spawn_context_button(root, "Toggle Two-way", EditorButtonAction::ToggleTwoWay);
+            spawn_context_button(root, "Close", EditorButtonAction::CloseContextMenu);
+        });
+}
+
+fn spawn_context_button(parent: &mut ChildBuilder, label: &str, action: EditorButtonAction) {
+    parent
+        .spawn((
+            Button,
+            action,
+            Node {
+                height: Val::Px(30.0),
+                width: Val::Percent(100.0),
+                padding: UiRect::horizontal(Val::Px(10.0)),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::FlexStart,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.14, 0.135, 0.12, 1.0)),
         ))
         .with_child((
             Text::new(label),
@@ -558,6 +677,23 @@ pub fn update_scene_selector_ui_visibility(
     }
 }
 
+pub fn update_scene_editor_context_menu(
+    editor: Res<SceneEditorState>,
+    selector: Res<SceneSelectorState>,
+    context_menu: Res<SceneEditorContextMenuState>,
+    mut roots: Query<(&mut Node, &mut Visibility), With<EditorContextMenuRoot>>,
+) {
+    for (mut node, mut visibility) in &mut roots {
+        node.left = Val::Px(context_menu.position.x);
+        node.top = Val::Px(context_menu.position.y);
+        *visibility = if editor.enabled && !selector.visible && context_menu.visible {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
 pub fn scene_selector_button_input(
     mut interactions: Query<
         (&Interaction, &SceneSelectorAction, &mut BackgroundColor),
@@ -567,6 +703,7 @@ pub fn scene_selector_button_input(
     mut document: ResMut<WorldDocument>,
     mut editor: ResMut<SceneEditorState>,
     mut selector: ResMut<SceneSelectorState>,
+    mut context_menu: ResMut<SceneEditorContextMenuState>,
     mut status: ResMut<WorldRuntimeStatus>,
     mut reload_requests: EventWriter<WorldReloadRequested>,
 ) {
@@ -574,6 +711,7 @@ pub fn scene_selector_button_input(
         match *interaction {
             Interaction::Pressed => {
                 *color = BackgroundColor(Color::srgba(0.34, 0.29, 0.18, 1.0));
+                context_menu.visible = false;
                 match action.clone() {
                     SceneSelectorAction::NewEmpty => {
                         selector.visible = false;
@@ -615,23 +753,29 @@ pub fn scene_selector_button_input(
 
 pub fn scene_editor_input(
     keyboard: Res<ButtonInput<KeyCode>>,
+    mut app_mode: ResMut<AppMode>,
     mut config: ResMut<WorldRuntimeConfig>,
     asset_registry: Res<AssetRegistry>,
     prefab_catalog: Res<PrefabCatalog>,
     mut document: ResMut<WorldDocument>,
     mut editor: ResMut<SceneEditorState>,
     mut selector: ResMut<SceneSelectorState>,
+    mut context_menu: ResMut<SceneEditorContextMenuState>,
     mut status: ResMut<WorldRuntimeStatus>,
     mut reload_requests: EventWriter<WorldReloadRequested>,
 ) {
     if keyboard.just_pressed(KeyCode::F10) {
         editor.enabled = !editor.enabled;
         editor.message = if editor.enabled {
+            *app_mode = AppMode::Edit;
             "Editor enabled".to_string()
         } else {
+            *app_mode = AppMode::Play;
             selector.visible = false;
+            context_menu.visible = false;
             "Editor disabled".to_string()
         };
+        status.last_message = editor.message.clone();
     }
 
     if keyboard.just_pressed(KeyCode::F5) {
@@ -647,8 +791,15 @@ pub fn scene_editor_input(
     if selector.visible {
         if keyboard.just_pressed(KeyCode::Escape) {
             selector.visible = false;
+            context_menu.visible = false;
             editor.message = "Scene selector closed".to_string();
         }
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::Escape) && context_menu.visible {
+        context_menu.visible = false;
+        editor.message = "Context menu closed".to_string();
         return;
     }
 
@@ -695,6 +846,7 @@ pub fn scene_editor_input(
         change_world_levels(-1, &mut editor, &mut document, &mut reload_requests);
     }
     if keyboard.just_pressed(KeyCode::Escape) {
+        context_menu.visible = false;
         editor.pending_link_start = None;
         editor.pending_zone_start = None;
         editor.message = "Cleared pending editor action".to_string();
@@ -737,6 +889,7 @@ pub fn scene_editor_button_input(
     mut document: ResMut<WorldDocument>,
     mut editor: ResMut<SceneEditorState>,
     mut selector: ResMut<SceneSelectorState>,
+    mut context_menu: ResMut<SceneEditorContextMenuState>,
     mut status: ResMut<WorldRuntimeStatus>,
     mut reload_requests: EventWriter<WorldReloadRequested>,
 ) {
@@ -755,6 +908,9 @@ pub fn scene_editor_button_input(
                     &mut status,
                     &mut reload_requests,
                 );
+                if *action != EditorButtonAction::OpenSceneSelector {
+                    context_menu.visible = false;
+                }
             }
             Interaction::Hovered => {
                 *color = BackgroundColor(Color::srgba(0.24, 0.22, 0.18, 0.98));
@@ -770,11 +926,10 @@ pub fn scene_editor_mouse_input(
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-    prefab_catalog: Res<PrefabCatalog>,
     selector: Res<SceneSelectorState>,
-    mut document: ResMut<WorldDocument>,
+    document: Res<WorldDocument>,
     mut editor: ResMut<SceneEditorState>,
-    mut reload_requests: EventWriter<WorldReloadRequested>,
+    mut context_menu: ResMut<SceneEditorContextMenuState>,
 ) {
     if !editor.enabled || selector.visible {
         return;
@@ -791,7 +946,7 @@ pub fn scene_editor_mouse_input(
     let Some(cursor_position) = window.cursor_position() else {
         return;
     };
-    if cursor_over_editor_ui(cursor_position, window) {
+    if cursor_over_editor_ui(cursor_position, window, &context_menu) {
         return;
     }
 
@@ -807,14 +962,21 @@ pub fn scene_editor_mouse_input(
     clamp_cursor(&mut editor, &document);
 
     if mouse_buttons.just_pressed(MouseButton::Left) {
-        primary_action(
-            &mut editor,
-            &prefab_catalog,
-            &mut document,
-            &mut reload_requests,
-        );
-    } else if mouse_buttons.just_pressed(MouseButton::Right) {
+        context_menu.visible = false;
         select_nearest_for_active_tool(&mut editor, &document);
+        if editor.selected.is_none() {
+            editor.message = format!(
+                "Cursor {},{},{}",
+                editor.cursor.x, editor.cursor.y, editor.cursor_z
+            );
+        }
+    } else if mouse_buttons.just_pressed(MouseButton::Right) {
+        context_menu.visible = true;
+        context_menu.position = context_menu_position(cursor_position, window);
+        select_nearest_for_active_tool(&mut editor, &document);
+        if editor.selected.is_none() {
+            editor.message = "Context menu opened".to_string();
+        }
     }
 }
 
@@ -832,11 +994,15 @@ fn run_editor_button_action(
     if !editor.enabled
         && action != EditorButtonAction::Reload
         && action != EditorButtonAction::OpenSceneSelector
+        && action != EditorButtonAction::CloseContextMenu
     {
         return;
     }
 
     match action {
+        EditorButtonAction::CloseContextMenu => {
+            editor.message = "Context menu closed".to_string();
+        }
         EditorButtonAction::OpenSceneSelector => {
             selector.refresh_scenes();
             selector.visible = true;
@@ -1003,10 +1169,34 @@ fn clamp_cursor(editor: &mut SceneEditorState, document: &WorldDocument) {
     editor.cursor_z = editor.cursor_z.clamp(0, document.levels.saturating_sub(1));
 }
 
-fn cursor_over_editor_ui(cursor_position: Vec2, window: &Window) -> bool {
-    cursor_position.y <= EDITOR_TOP_BAR_HEIGHT
-        || cursor_position.y >= window.height() - EDITOR_TOP_BAR_HEIGHT
-        || cursor_position.x >= window.width() - EDITOR_SIDE_PANEL_WIDTH
+fn cursor_over_editor_ui(
+    cursor_position: Vec2,
+    window: &Window,
+    context_menu: &SceneEditorContextMenuState,
+) -> bool {
+    let over_left_panel = cursor_position.x <= EDITOR_LEFT_PANEL_WIDTH;
+    let over_right_panel = cursor_position.x >= window.width() - EDITOR_RIGHT_PANEL_WIDTH;
+    let over_top_edge = cursor_position.y <= EDITOR_TOP_SAFE_HEIGHT;
+    let over_context_menu = context_menu.visible
+        && cursor_position.x >= context_menu.position.x
+        && cursor_position.x <= context_menu.position.x + EDITOR_CONTEXT_MENU_WIDTH
+        && cursor_position.y >= context_menu.position.y
+        && cursor_position.y <= context_menu.position.y + EDITOR_CONTEXT_MENU_HEIGHT;
+
+    over_left_panel || over_right_panel || over_top_edge || over_context_menu
+}
+
+fn context_menu_position(cursor_position: Vec2, window: &Window) -> Vec2 {
+    Vec2::new(
+        cursor_position
+            .x
+            .min(window.width() - EDITOR_CONTEXT_MENU_WIDTH - 12.0)
+            .max(12.0),
+        cursor_position
+            .y
+            .min(window.height() - EDITOR_CONTEXT_MENU_HEIGHT - 12.0)
+            .max(12.0),
+    )
 }
 
 fn validate_editor_document(
@@ -1237,6 +1427,16 @@ fn new_empty_scene(
     editor.pending_zone_start = None;
     editor.message = format!("Created empty scene document: {}", config.world_path);
     mark_document_changed(editor, reload_requests, "editor new empty scene");
+}
+
+pub fn open_sandbox_scene(
+    config: &mut WorldRuntimeConfig,
+    editor: &mut SceneEditorState,
+    document: &mut WorldDocument,
+    reload_requests: &mut EventWriter<WorldReloadRequested>,
+) {
+    new_empty_scene(config, editor, document, reload_requests);
+    editor.enabled = true;
 }
 
 fn primary_action(

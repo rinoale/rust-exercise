@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::AppMode;
 use crate::actors::{ActorAnimation, ActorVisualMotion, Customer, CustomerState, Player};
 use crate::config::INTERACT_RADIUS;
 use crate::gameplay::{
@@ -8,14 +9,24 @@ use crate::gameplay::{
 };
 use crate::universe::{DebugSettings, GridPosition, distance_grid};
 use crate::world::{
-    PrefabCatalog, SceneEditorState, WorldBlueprint, WorldDocument, WorldRuntimeStatus,
+    PrefabCatalog, SceneEditorState, SceneSelectorState, WorldBlueprint, WorldDocument,
+    WorldRuntimeStatus,
 };
+
+#[derive(Component)]
+pub(super) struct HudPanel;
 
 #[derive(Component)]
 pub(super) struct HudText;
 
 #[derive(Component)]
+pub(super) struct PromptPanel;
+
+#[derive(Component)]
 pub(super) struct PromptText;
+
+#[derive(Component)]
+pub(super) struct EditorStatusPanel;
 
 #[derive(Component)]
 pub(super) struct EditorText;
@@ -23,6 +34,7 @@ pub(super) struct EditorText;
 pub(super) fn setup_ui(mut commands: Commands) {
     commands
         .spawn((
+            HudPanel,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(16.0),
@@ -45,6 +57,7 @@ pub(super) fn setup_ui(mut commands: Commands) {
 
     commands
         .spawn((
+            PromptPanel,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(16.0),
@@ -67,6 +80,7 @@ pub(super) fn setup_ui(mut commands: Commands) {
 
     commands
         .spawn((
+            EditorStatusPanel,
             Node {
                 position_type: PositionType::Absolute,
                 right: Val::Px(16.0),
@@ -86,6 +100,49 @@ pub(super) fn setup_ui(mut commands: Commands) {
             TextColor(Color::srgb(0.78, 0.9, 0.95)),
             EditorText,
         ));
+}
+
+pub(super) fn sync_core_ui_visibility(
+    mode: Res<AppMode>,
+    editor: Option<Res<SceneEditorState>>,
+    selector: Option<Res<SceneSelectorState>>,
+    mut hud_panels: Query<&mut Visibility, With<HudPanel>>,
+    mut prompt_panels: Query<&mut Visibility, (With<PromptPanel>, Without<HudPanel>)>,
+    mut editor_panels: Query<
+        &mut Visibility,
+        (
+            With<EditorStatusPanel>,
+            Without<HudPanel>,
+            Without<PromptPanel>,
+        ),
+    >,
+) {
+    for mut visibility in &mut hud_panels {
+        *visibility = if *mode == AppMode::Play {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    for mut visibility in &mut prompt_panels {
+        *visibility = if *mode == AppMode::Play {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    let editor_visible = *mode == AppMode::Edit
+        && editor.as_deref().is_some_and(|editor| editor.enabled)
+        && !selector.as_deref().is_some_and(|selector| selector.visible);
+    for mut visibility in &mut editor_panels {
+        *visibility = if editor_visible {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
 }
 
 pub(super) fn update_ui(
@@ -288,7 +345,7 @@ fn editor_status_text(
     let selected = editor.selected_label();
 
     format!(
-        "Editor {dirty}  Tool {}\nCursor {},{},{}  Brush {brush}\nSelected {selected}\nUse toolbar buttons, left-click scene to apply, right-click scene to select.\nScenes opens the selector; Empty clears to a no-ground scene.\nPgUp/PgDn level  F8 validate  F9 save  F5 reload  F10 close\n{}{}",
+        "Editor {dirty}  Tool {}\nCursor {},{},{}  Brush {brush}\nSelected {selected}\nLeft-click scene: cursor/select. Right-click scene: context actions.\nUse Apply/Move/Copy/Delete buttons to change the document.\nPgUp/PgDn level  F8 validate  F9 save  F5 reload  F10 play\n{}{}",
         editor.tool_label(),
         editor.cursor.x,
         editor.cursor.y,

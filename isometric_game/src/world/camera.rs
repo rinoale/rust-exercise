@@ -3,6 +3,8 @@ use bevy::prelude::*;
 
 use crate::actors::Player;
 use crate::config::CAMERA_LERP;
+use crate::universe::grid_to_screen_at;
+use crate::world::SceneEditorState;
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -48,4 +50,24 @@ pub fn camera_zoom(
         };
         projection.scale = (projection.scale - scroll).clamp(0.45, 2.4);
     }
+}
+
+pub fn camera_follow_editor_cursor(
+    editor: Res<SceneEditorState>,
+    mut camera_query: Query<&mut Transform, With<MainCamera>>,
+    time: Res<Time>,
+) {
+    if !editor.enabled {
+        return;
+    }
+
+    let Ok(mut camera_transform) = camera_query.get_single_mut() else {
+        return;
+    };
+
+    let target = grid_to_screen_at(editor.cursor.as_vec2(), editor.cursor_z);
+    let target = Vec3::new(target.x, target.y, camera_transform.translation.z);
+    camera_transform.translation = camera_transform
+        .translation
+        .lerp(target, CAMERA_LERP * time.delta_secs());
 }

@@ -4,7 +4,7 @@ mod player;
 
 use bevy::prelude::*;
 
-use crate::GameSet;
+use crate::{GameSet, app_in_play_mode, app_not_intro};
 
 pub use customer::{Customer, CustomerState};
 pub use player::Player;
@@ -43,12 +43,14 @@ impl Plugin for ActorsPlugin {
                     customer_patience,
                 )
                     .chain()
+                    .run_if(app_in_play_mode)
                     .in_set(GameSet::Actors),
             )
             .add_systems(
                 Update,
                 (update_actor_visual_motion, update_actor_animation)
                     .chain()
+                    .run_if(app_not_intro)
                     .in_set(GameSet::VisualAnimation),
             );
     }

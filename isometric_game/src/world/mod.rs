@@ -10,25 +10,26 @@ mod spawn;
 
 use bevy::prelude::*;
 
-use crate::GameSet;
+use crate::{GameSet, app_in_edit_mode, app_in_play_mode, app_not_intro};
 
 pub use blueprint::{NavPoint, TavernMap, VerticalLink, WorldBlueprint};
-pub use editor::SceneEditorState;
+pub use editor::{SceneEditorState, SceneSelectorState, open_sandbox_scene};
 pub use import::WorldDocument;
 pub use prefabs::PrefabCatalog;
-pub use runtime::{UNTITLED_SCENE_PATH, WorldRuntimeConfig, WorldRuntimeStatus};
+pub use runtime::{
+    UNTITLED_SCENE_PATH, WorldReloadRequested, WorldRuntimeConfig, WorldRuntimeStatus,
+};
 
-use camera::{camera_follow_player, camera_zoom, setup_camera};
+use camera::{camera_follow_editor_cursor, camera_follow_player, camera_zoom, setup_camera};
 use cutaway::update_cutaways;
 use editor::{
-    SceneSelectorState, draw_scene_editor, scene_editor_button_input, scene_editor_input,
-    scene_editor_mouse_input, scene_selector_button_input, setup_scene_editor_ui,
-    setup_scene_selector_ui, sync_scene_selector_ui, update_scene_editor_ui_visibility,
+    SceneEditorContextMenuState, draw_scene_editor, scene_editor_button_input, scene_editor_input,
+    scene_editor_mouse_input, scene_selector_button_input, setup_scene_editor_context_menu_ui,
+    setup_scene_editor_ui, setup_scene_selector_ui, sync_scene_selector_ui,
+    update_scene_editor_context_menu, update_scene_editor_ui_visibility,
     update_scene_selector_ui_visibility,
 };
-use runtime::{
-    WorldReloadRequested, fallback_world_bundle, handle_world_reload_requests, load_world_bundle,
-};
+use runtime::{fallback_world_bundle, handle_world_reload_requests, load_world_bundle};
 use spawn::spawn_world;
 
 pub struct WorldPlugin;
@@ -53,6 +54,7 @@ impl Plugin for WorldPlugin {
             .insert_resource(loaded.world_map)
             .insert_resource(SceneEditorState::new(editor_enabled))
             .insert_resource(SceneSelectorState::new(scene_selector_enabled))
+            .init_resource::<SceneEditorContextMenuState>()
             .init_resource::<WorldRuntimeStatus>()
             .add_event::<WorldReloadRequested>()
             .add_systems(
@@ -61,6 +63,7 @@ impl Plugin for WorldPlugin {
                     setup_camera,
                     spawn_world,
                     setup_scene_editor_ui,
+                    setup_scene_editor_context_menu_ui,
                     setup_scene_selector_ui,
                 )
                     .chain(),
@@ -68,21 +71,36 @@ impl Plugin for WorldPlugin {
             .add_systems(
                 Update,
                 (
-                    scene_editor_input.in_set(GameSet::Input),
-                    scene_selector_button_input.in_set(GameSet::Input),
-                    scene_editor_button_input.in_set(GameSet::Input),
-                    scene_editor_mouse_input.in_set(GameSet::Input),
+                    scene_editor_input
+                        .run_if(app_not_intro)
+                        .in_set(GameSet::Input),
+                    scene_selector_button_input
+                        .run_if(app_in_edit_mode)
+                        .in_set(GameSet::Input),
+                    scene_editor_button_input
+                        .run_if(app_in_edit_mode)
+                        .in_set(GameSet::Input),
+                    scene_editor_mouse_input
+                        .run_if(app_in_edit_mode)
+                        .in_set(GameSet::Input),
                     handle_world_reload_requests.in_set(GameSet::Gameplay),
                     sync_scene_selector_ui.in_set(GameSet::Ui),
                     update_scene_editor_ui_visibility.in_set(GameSet::Ui),
+                    update_scene_editor_context_menu.in_set(GameSet::Ui),
                     update_scene_selector_ui_visibility.in_set(GameSet::Ui),
-                    draw_scene_editor.in_set(GameSet::Debug),
+                    draw_scene_editor
+                        .run_if(app_in_edit_mode)
+                        .in_set(GameSet::Debug),
                 ),
             )
             .add_systems(Update, update_cutaways.in_set(GameSet::RenderSync))
             .add_systems(
                 Update,
-                (camera_follow_player, camera_zoom)
+                (
+                    camera_follow_player.run_if(app_in_play_mode),
+                    camera_follow_editor_cursor.run_if(app_in_edit_mode),
+                    camera_zoom.run_if(app_not_intro),
+                )
                     .chain()
                     .in_set(GameSet::Camera),
             );

@@ -1,7 +1,6 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
 
-use crate::GameSet;
 use crate::actors::{Customer, CustomerState, Player};
 use crate::gameplay::interactions::{InteractionOutcome, interact_at};
 use crate::gameplay::{
@@ -9,6 +8,7 @@ use crate::gameplay::{
 };
 use crate::universe::{DebugSettings, GridPosition};
 use crate::world::NavPoint;
+use crate::{GameSet, app_in_play_mode};
 
 const SCRIPT_SPEED: f32 = 8.0;
 const MAX_RUNTIME_SECONDS: f32 = 45.0;
@@ -60,7 +60,12 @@ impl Plugin for ScriptedPlaybackPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScriptedPlaybackState>()
             .add_systems(Startup, setup_scripted_playback)
-            .add_systems(Update, run_scripted_playback.in_set(GameSet::Gameplay));
+            .add_systems(
+                Update,
+                run_scripted_playback
+                    .run_if(app_in_play_mode)
+                    .in_set(GameSet::Gameplay),
+            );
     }
 }
 

@@ -14,6 +14,31 @@ use ui::UiPlugin;
 use universe::UniversePlugin;
 use world::{UNTITLED_SCENE_PATH, WorldPlugin, WorldRuntimeConfig};
 
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppMode {
+    Intro,
+    Play,
+    Edit,
+}
+
+impl Default for AppMode {
+    fn default() -> Self {
+        Self::Intro
+    }
+}
+
+pub fn app_in_play_mode(mode: Res<AppMode>) -> bool {
+    *mode == AppMode::Play
+}
+
+pub fn app_in_edit_mode(mode: Res<AppMode>) -> bool {
+    *mode == AppMode::Edit
+}
+
+pub fn app_not_intro(mode: Res<AppMode>) -> bool {
+    *mode != AppMode::Intro
+}
+
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum GameSet {
     Input,
@@ -38,6 +63,7 @@ fn main() {
 
     let mut app = App::new();
     app.insert_resource(launch_config.world)
+        .insert_resource(launch_config.initial_mode)
         .add_plugins(
             DefaultPlugins
                 .set(AssetPlugin {
@@ -88,6 +114,7 @@ fn main() {
 struct LaunchConfig {
     world: WorldRuntimeConfig,
     scripted_playback: Option<ScriptedPlaybackConfig>,
+    initial_mode: AppMode,
 }
 
 impl LaunchConfig {
@@ -128,9 +155,18 @@ impl LaunchConfig {
             world.world_path = UNTITLED_SCENE_PATH.to_string();
         }
 
+        let initial_mode = if world.editor_enabled {
+            AppMode::Edit
+        } else if scripted_playback.is_some() {
+            AppMode::Play
+        } else {
+            AppMode::Intro
+        };
+
         Ok(Self {
             world,
             scripted_playback,
+            initial_mode,
         })
     }
 }
