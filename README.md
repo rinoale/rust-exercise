@@ -17,6 +17,16 @@ Rust learning course notebooks using the `evcxr_jupyter` kernel.
 | rustlings-intermediate | Intermediate | `cd rustlings-intermediate && rustlings` |
 | rustlings-advanced | Advanced | `cd rustlings-advanced && rustlings` |
 
+## Protocol Demos
+
+Rust ports of the Ruby demos in `ruby_codes` — each is a standalone cargo
+project with its own README:
+
+| Directory | What it shows | Run |
+|-----------|---------------|-----|
+| grpc_demo | tonic client/server + a MITM tap that decodes HTTP/2, HPACK, gRPC framing and protobuf byte by byte | `cd grpc_demo && ./run_demo.sh` |
+| stun_turn_demo | STUN (RFC 5389) / TURN (RFC 5766) wire format, hole punching, P2P chat + file transfer over UDP | `cd stun_turn_demo && cargo run --bin run_scripted_demo` |
+
 ## Setup
 
 ```bash
