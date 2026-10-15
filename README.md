@@ -10,6 +10,12 @@ Rust learning course notebooks using the `evcxr_jupyter` kernel.
 | 02_intermediate_rust_course.ipynb | Intermediate | Generics, traits, lifetimes, closures, iterators, smart pointers, concurrency, libraries (serde/clap/regex), testing |
 | 03_advanced_rust_course.ipynb | Advanced | Advanced traits, advanced lifetimes, unsafe Rust, macros, async/await, design patterns (creational/structural/behavioral), web frameworks, systems tools |
 
+## Notes
+
+| File | Topic |
+|------|-------|
+| ownership_and_borrowing.md | Why Rust is memory-safe: move vs `&` vs `&mut`, borrow rules, lifetimes, compared with C++ references |
+
 ## Rustlings Courses
 
 | Directory | Level | Start |
