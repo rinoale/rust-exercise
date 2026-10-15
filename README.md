@@ -15,6 +15,7 @@ Rust learning course notebooks using the `evcxr_jupyter` kernel.
 | File | Topic |
 |------|-------|
 | ownership_and_borrowing.md | Why Rust is memory-safe: move vs `&` vs `&mut`, borrow rules, lifetimes, compared with C++ references |
+| rust_for_ruby_python_devs.md | What a Ruby/Python developer needs to study first, in order, with side-by-side comparisons |
 
 ## Rustlings Courses
 
