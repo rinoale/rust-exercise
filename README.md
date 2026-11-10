@@ -34,6 +34,29 @@ project with its own README:
 | grpc_demo | tonic client/server + a MITM tap that decodes HTTP/2, HPACK, gRPC framing and protobuf byte by byte | `cd grpc_demo && ./run_demo.sh` |
 | stun_turn_demo | STUN (RFC 5389) / TURN (RFC 5766) wire format, hole punching, P2P chat + file transfer over UDP | `cd stun_turn_demo && cargo run --bin run_scripted_demo` |
 
+## Graphics Demo
+
+[`graphics_lab`](graphics_lab/README.md) contains a Metal 3D scene and an
+experimental native M5 GPU cube renderer using Rust and private IOGPU transport.
+
+```bash
+cd graphics_lab && cargo run --bin metal_cube
+```
+
+For the native GPU cube on the verified M5 Pro configuration:
+
+```bash
+cd graphics_lab && cargo run --no-default-features --bin own_gpu
+```
+
+[`assembly_metal_demo`](assembly_metal_demo/README.md) demonstrates Rust calling
+an ARM64 assembly library that invokes Metal directly to draw a rotating 3D cube
+with perspective and depth testing.
+
+```bash
+cd assembly_metal_demo && cargo run
+```
+
 ## Setup
 
 ```bash

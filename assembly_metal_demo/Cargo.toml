@@ -1,0 +1,13 @@
+[package]
+name = "assembly_metal_demo"
+version = "0.1.0"
+edition = "2024"
+default-run = "assembly_metal_demo"
+
+[workspace]
+members = ["metal_asm"]
+
+[dependencies]
+metal_asm = { path = "metal_asm" }
+png = "0.17"
+winit = { version = "0.30", default-features = false, features = ["rwh_06"] }

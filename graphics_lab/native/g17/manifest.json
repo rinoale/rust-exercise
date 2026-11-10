@@ -1,0 +1,212 @@
+{
+  "reference": "https://github.com/sbryngelson/AGXForge",
+  "reference_commit": "c6a3b22c23f7668a6139b6194ba82ee27587da52",
+  "generator_sha256": "6a1995088df859eda5f34eb7ef6c33f73c3301c94f51be143c29fa6b048c3379",
+  "python": "3.14.6 (main, Jun 30 2026, 10:22:11) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "M5 Pro / macOS 26.6.2 (25G83) / AGX 353.14",
+  "generation": "Launch layouts constructed from AGXForge's measured fields; our kernels compiled from IR. No Metal capture or Metal API.",
+  "files": {
+    "self_test.bin": {
+      "bytes": 96,
+      "sha256": "70f9ce5d5cbb47917de1369a4debfc06958f9ddfc5c682c1d510365ac3d67100"
+    },
+    "cube.bin": {
+      "bytes": 834,
+      "sha256": "a263e3cf2062983a2d87ba7daa2081859b4936380c0748ae260891608f714ffa"
+    },
+    "allocations.bin": {
+      "bytes": 4176,
+      "sha256": "10b640b151c0f259cc9b027760182da20f0e8943dc86d4f018212f9a4bfb6d2e"
+    },
+    "pages.bin": {
+      "bytes": 32768,
+      "sha256": "c57352aa3571bd5549f498ac68ce80f8208e29a8210295a25989e39219619de2"
+    },
+    "memory.bin": {
+      "bytes": 638976,
+      "sha256": "1f5f8c3a3c1c2c880cc7d7aae94e93a97559de02814572c6f032c6da0e0955c4"
+    }
+  },
+  "programs": {
+    "self_test.bin": {
+      "abi_version": 3,
+      "arch_flag": false,
+      "bindings": [
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 1,
+          "offset": 0,
+          "written": false
+        },
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 2,
+          "offset": 2,
+          "written": false
+        },
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 3,
+          "offset": 4,
+          "written": true
+        }
+      ],
+      "entry": 64,
+      "forms": [
+        [
+          684,
+          4
+        ],
+        [
+          10282,
+          12
+        ],
+        [
+          10825,
+          14
+        ],
+        [
+          11842,
+          8
+        ],
+        [
+          14059,
+          4
+        ],
+        [
+          17229,
+          8
+        ]
+      ],
+      "has_stores": true,
+      "launch": {
+        "bounds_checked": false,
+        "exact_grid_required": true
+      },
+      "main_instruction_count": 11,
+      "pk_extra": [
+        15,
+        16
+      ],
+      "pk_values": {
+        "15": 1,
+        "16": 1
+      },
+      "profile": null,
+      "prologue": "0e000000060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600",
+      "register_count": 20,
+      "system_registers": [
+        130,
+        156
+      ],
+      "uses_threadgroup": false,
+      "writes_buffer": true,
+      "writes_texture": false
+    },
+    "cube.bin": {
+      "abi_version": 3,
+      "arch_flag": false,
+      "bindings": [
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 1,
+          "offset": 0,
+          "written": false
+        },
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 2,
+          "offset": 2,
+          "written": false
+        },
+        {
+          "element_bytes": 4,
+          "element_type": "uint",
+          "index": 3,
+          "offset": 4,
+          "written": true
+        }
+      ],
+      "entry": 64,
+      "forms": [
+        [
+          684,
+          4
+        ],
+        [
+          3290,
+          14
+        ],
+        [
+          9700,
+          14
+        ],
+        [
+          10279,
+          12
+        ],
+        [
+          10282,
+          12
+        ],
+        [
+          10825,
+          14
+        ],
+        [
+          11372,
+          10
+        ],
+        [
+          11375,
+          14
+        ],
+        [
+          11842,
+          8
+        ],
+        [
+          12682,
+          14
+        ],
+        [
+          14059,
+          4
+        ],
+        [
+          17229,
+          8
+        ]
+      ],
+      "has_stores": true,
+      "launch": {
+        "bounds_checked": false,
+        "exact_grid_required": true
+      },
+      "main_instruction_count": 71,
+      "pk_extra": [
+        15,
+        16
+      ],
+      "pk_values": {
+        "15": 1,
+        "16": 1
+      },
+      "profile": null,
+      "prologue": "0e000000060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600060006000600",
+      "register_count": 28,
+      "system_registers": [
+        130,
+        156
+      ],
+      "uses_threadgroup": false,
+      "writes_buffer": true,
+      "writes_texture": false
+    }
+  }
+}
