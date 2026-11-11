@@ -34,6 +34,16 @@ project with its own README:
 | grpc_demo | tonic client/server + a MITM tap that decodes HTTP/2, HPACK, gRPC framing and protobuf byte by byte | `cd grpc_demo && ./run_demo.sh` |
 | stun_turn_demo | STUN (RFC 5389) / TURN (RFC 5766) wire format, hole punching, P2P chat + file transfer over UDP | `cd stun_turn_demo && cargo run --bin run_scripted_demo` |
 
+## Block World Game
+
+A small first-person voxel game with WASD movement, jumping, mouse digging,
+and inventory-based block placement, written in Rust + Metal without a game
+engine. Requires macOS. See [controls and implementation](graphics_lab/README.md#block-world).
+
+```bash
+cd graphics_lab && cargo run --bin block_world
+```
+
 ## Graphics Demo
 
 [`graphics_lab`](graphics_lab/README.md) contains a Metal 3D scene and an

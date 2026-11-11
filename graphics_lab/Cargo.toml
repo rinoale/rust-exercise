@@ -41,3 +41,8 @@ opt-level = 1
 # objc 0.2's selector macro checks this historical feature in its caller.
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
+
+[[bin]]
+name = "block_world"
+path = "src/bin/block_world.rs"
+required-features = ["metal-app"]

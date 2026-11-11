@@ -1,14 +1,79 @@
-# Metal and native GPU cube experiments
+# Rust graphics lab and block world
 
-Two Rust apps demonstrate different paths to the Apple GPU:
+Rust apps explore 3D rendering and a small game without a game engine:
 
 | App | Renderer | Scene |
 |---|---|---|
+| `block_world` | Native Metal API | First-person voxel world with digging and building |
 | `metal_cube` | Native Metal API | Two rotating textured cubes and a floor |
 | `own_gpu` | Our G17 kernel and Rust executor using private IOGPU transport | One shaded cube, ray traced on the GPU |
 
 The native app now renders an image. Its default command opens a window; `--probe`
 is a separate connection diagnostic and deliberately does not render.
+
+## Block world
+
+A small Minecraft-like prototype written in Rust using `winit` for the window and
+input, `glam` for math, and Metal for GPU rendering. No Unity, Unreal, or game
+engine is used. Like `metal_cube`, this app requires **macOS and a Metal GPU**.
+It uses the public Metal API and does not require the specific M5 configuration
+of the separate `own_gpu` experiment.
+
+```sh
+cd graphics_lab
+cargo run --bin block_world
+```
+
+Click the window to capture the mouse and start playing. That first click only
+captures the mouse. Esc releases it and pauses movement; click again to resume.
+Switching away from the window also releases the mouse and clears held keys.
+
+| Control | Action |
+|---|---|
+| W / A / S / D | Walk forward / left / backward / right |
+| Mouse | Look around |
+| Space | Jump while standing on a block |
+| Left click | Dig the highlighted block and collect it into inventory |
+| Right click | Use one selected block item to place it against the targeted face |
+| 1–4 or mouse wheel | Select grass, dirt, stone, or wood |
+| Esc | Release the mouse and pause |
+| R | Respawn in safe standing room |
+| Q or window close | Quit |
+
+The four-slot hotbar shows the selected item and available counts. You start
+with 16 grass, 32 dirt, 32 stone, and 16 wood blocks. Digging adds an item;
+placement consumes one. Blocks must be within six units of the crosshair.
+Placement cannot overlap your body, replace an occupied block, or leave the
+world bounds. Jump and place beneath yourself to build upward.
+
+Terrain occupies a **40 × 24 × 40** integer grid, with Y as the vertical axis.
+Grass and dirt sit over stone, with a few wood stacks near spawn. Gravity,
+wall and ceiling collision, normalized diagonal movement, and falling into
+holes are implemented. Falling below the world respawns the player. This is a
+finite, single-player prototype: edits and inventory are **in memory only** and
+reset when you restart. There is no crafting, saving, or infinite terrain yet.
+
+### How the game works
+
+- `src/voxel.rs`: block grid, exposed-face meshing, exact grid ray traversal,
+  inventory actions, and player collision/physics. This logic has no GPU calls.
+- `src/voxel_app.rs`: window, mouse capture, held keys, and the game loop.
+- `src/voxel_renderer.rs` and `src/voxel.metal`: Metal depth rendering, procedural
+  block surfaces, lighting, distance fog, target outline, crosshair, and hotbar.
+
+Only exposed block faces are uploaded. The world mesh is cached and rebuilt
+when digging or placement changes the grid. Physics uses small substeps to
+prevent passing through blocks during slow frames. Rendering waits for each
+frame to finish to keep GPU resource ownership simple for this learning app.
+
+```sh
+# Offscreen render and a short real-window smoke test:
+cargo run --bin block_world -- --capture artifacts/block-world.png
+cargo run --bin block_world -- --frames 5
+
+# Game rules/physics and real Metal dig/place image validation:
+cargo test --test voxel_gameplay --test voxel_rendering
+```
 
 ## Native GPU cube
 
