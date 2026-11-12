@@ -36,6 +36,14 @@ project with its own README:
 
 ## Block World Game
 
+A diagonal-world variant uses **5 × 5 × 5 cubes and 5 × 12 × 5 boxes**, cut into
+walkable **22.62°, 45°, and 67.38° ramps**, with creative building and a fly mode.
+See [controls and geometry](graphics_lab/README.md#diagonal-world).
+
+```bash
+cd graphics_lab && cargo run --bin diagonal_world
+```
+
 A small first-person voxel game with WASD movement, jumping, mouse digging,
 and inventory-based block placement, written in Rust + Metal without a game
 engine. Requires macOS. See [controls and implementation](graphics_lab/README.md#block-world).

@@ -46,3 +46,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-cli
 name = "block_world"
 path = "src/bin/block_world.rs"
 required-features = ["metal-app"]
+
+[[bin]]
+name = "diagonal_world"
+path = "src/bin/diagonal_world.rs"
+required-features = ["metal-app"]

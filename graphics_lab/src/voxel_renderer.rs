@@ -5,6 +5,41 @@ use bytemuck::{Pod, Zeroable};
 use metal::*;
 use std::{fs::File, io::BufWriter, path::Path};
 
+/// Both native block demos share the GPU pipeline and window-independent capture.
+pub trait RenderScene {
+    fn revision(&self) -> u64;
+    fn mesh(&self) -> Vec<VoxelVertex>;
+    fn view_projection(&self, aspect: f32) -> glam::Mat4;
+    fn eye(&self) -> glam::Vec3;
+    fn selection(&self) -> [f32; 4];
+    fn hud(&self, width: f32, height: f32, captured: bool) -> Vec<VoxelVertex>;
+    fn preview(&self) -> Vec<VoxelVertex> {
+        Vec::new()
+    }
+}
+
+impl RenderScene for Game {
+    fn revision(&self) -> u64 {
+        self.world.revision
+    }
+    fn mesh(&self) -> Vec<VoxelVertex> {
+        self.world.mesh()
+    }
+    fn view_projection(&self, aspect: f32) -> glam::Mat4 {
+        self.player.view_projection(aspect)
+    }
+    fn eye(&self) -> glam::Vec3 {
+        self.player.eye()
+    }
+    fn selection(&self) -> [f32; 4] {
+        self.target()
+            .map_or([0.; 4], |hit| hit.cell.as_vec3().extend(1.).to_array())
+    }
+    fn hud(&self, width: f32, height: f32, captured: bool) -> Vec<VoxelVertex> {
+        hud(self, width, height, captured)
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct Uniforms {
@@ -79,20 +114,20 @@ impl VoxelRenderer {
     }
     pub fn render(
         &mut self,
-        game: &Game,
+        game: &impl RenderScene,
         target: &TextureRef,
         drawable: Option<&MetalDrawableRef>,
         captured: bool,
     ) -> Result<()> {
-        if self.revision != Some(game.world.revision) {
-            let vertices = game.world.mesh();
+        if self.revision != Some(game.revision()) {
+            let vertices = game.mesh();
             self.vertices = vertices.len() as u64;
             self.mesh = if vertices.is_empty() {
                 None
             } else {
                 Some(self.upload(&vertices))
             };
-            self.revision = Some(game.world.revision);
+            self.revision = Some(game.revision());
         }
         if !self
             .depth
@@ -120,13 +155,10 @@ impl VoxelRenderer {
         depth.set_clear_depth(1.0);
         let uniforms = Uniforms {
             view_projection: game
-                .player
                 .view_projection(target.width() as f32 / target.height() as f32)
                 .to_cols_array_2d(),
-            eye: game.player.eye().extend(1.0).to_array(),
-            selected: game
-                .target()
-                .map_or([0.0; 4], |hit| hit.cell.as_vec3().extend(1.0).to_array()),
+            eye: game.eye().extend(1.0).to_array(),
+            selected: game.selection(),
         };
         let command = self.queue.new_command_buffer();
         let encoder = command.new_render_command_encoder(pass);
@@ -141,12 +173,14 @@ impl VoxelRenderer {
             encoder.set_vertex_buffer(0, Some(mesh), 0);
             encoder.draw_primitives(MTLPrimitiveType::Triangle, 0, self.vertices);
         }
-        let hud = self.upload(&hud(
-            game,
-            target.width() as f32,
-            target.height() as f32,
-            captured,
-        ));
+        let preview = game.preview();
+        // Retain the buffer through command completion, just like the HUD.
+        let preview_buffer = (!preview.is_empty()).then(|| self.upload(&preview));
+        if let Some(buffer) = &preview_buffer {
+            encoder.set_vertex_buffer(0, Some(buffer), 0);
+            encoder.draw_primitives(MTLPrimitiveType::Triangle, 0, preview.len() as u64);
+        }
+        let hud = self.upload(&game.hud(target.width() as f32, target.height() as f32, captured));
         encoder.set_render_pipeline_state(&self.hud_pipeline);
         encoder.set_depth_stencil_state(&self.depth_off);
         encoder.set_cull_mode(MTLCullMode::None);
@@ -169,7 +203,13 @@ impl VoxelRenderer {
         );
         Ok(())
     }
-    pub fn capture(&mut self, game: &Game, width: u32, height: u32, path: &Path) -> Result<()> {
+    pub fn capture(
+        &mut self,
+        game: &impl RenderScene,
+        width: u32,
+        height: u32,
+        path: &Path,
+    ) -> Result<()> {
         let desc = TextureDescriptor::new();
         desc.set_width(width as u64);
         desc.set_height(height as u64);
@@ -201,14 +241,27 @@ impl VoxelRenderer {
     }
 }
 
-struct Hud {
-    vertices: Vec<VoxelVertex>,
+pub(crate) struct Hud {
+    pub(crate) vertices: Vec<VoxelVertex>,
     width: f32,
     height: f32,
     scale: f32,
 }
 impl Hud {
-    fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: [f32; 4]) {
+    pub(crate) fn new(width: f32, height: f32) -> (Self, f32, f32) {
+        let scale = (width / 800.).min(height / 500.).max(0.4);
+        (
+            Self {
+                vertices: Vec::new(),
+                width,
+                height,
+                scale,
+            },
+            width / scale,
+            height / scale,
+        )
+    }
+    pub(crate) fn rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: [f32; 4]) {
         for [u, v] in [[0., 0.], [1., 0.], [1., 1.], [0., 0.], [1., 1.], [0., 1.]] {
             self.vertices.push(VoxelVertex {
                 position: [
@@ -224,7 +277,7 @@ impl Hud {
             });
         }
     }
-    fn text(&mut self, text: &str, x: f32, y: f32, color: [f32; 4]) {
+    pub(crate) fn text(&mut self, text: &str, x: f32, y: f32, color: [f32; 4]) {
         for (i, ch) in text.to_ascii_uppercase().chars().enumerate() {
             let rows = glyph(ch);
             for (row, bits) in rows.into_iter().enumerate() {
@@ -349,6 +402,7 @@ fn glyph(c: char) -> [u8; 7] {
         '8' => [14, 17, 17, 14, 17, 17, 14],
         '9' => [14, 17, 17, 15, 1, 1, 14],
         '-' => [0, 0, 0, 31, 0, 0, 0],
+        '=' => [0, 0, 31, 0, 31, 0, 0],
         '.' => [0, 0, 0, 0, 0, 12, 12],
         _ => [0; 7],
     }

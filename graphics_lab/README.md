@@ -5,11 +5,81 @@ Rust apps explore 3D rendering and a small game without a game engine:
 | App | Renderer | Scene |
 |---|---|---|
 | `block_world` | Native Metal API | First-person voxel world with digging and building |
+| `diagonal_world` | Native Metal API | Buildable 5–12–13 world with three real ramp angles |
 | `metal_cube` | Native Metal API | Two rotating textured cubes and a floor |
 | `own_gpu` | Our G17 kernel and Rust executor using private IOGPU transport | One shaded cube, ray traced on the GPU |
 
 The native app now renders an image. Its default command opens a window; `--probe`
 is a separate connection diagnostic and deliberately does not render.
+
+## Diagonal world
+
+A small creative sandbox built from **5 × 5 × 5 cubes** and
+**5 × 12 × 5 boxes**, plus their diagonal halves. The halves are solid triangular
+prisms: their exposed surfaces, ray picking, and player collision all follow the
+actual slopes, rather than approximating them with little stairs.
+
+```sh
+cd graphics_lab
+cargo run --bin diagonal_world
+```
+
+Requires macOS and Metal, like `block_world`. Click to capture the mouse. Explore
+three colored ramp lanes, a terraced hill, a house with a sloped roof, and a pair
+of equal-height towers: **12 cubes × 5 = 5 boxes × 12 = 60 design units**.
+
+| Piece | Dimensions in design units | Slope |
+|---|---|---|
+| Cube | 5 × 5 × 5 | Flat top |
+| Tall box | 5 × 12 × 5 | Flat top |
+| Long box | 12 × 5 × 5 | Flat top |
+| Gentle wedge | 12 × 5 × 5 bounding box | 22.619865° |
+| Cube wedge | 5 × 5 × 5 bounding box | 45° |
+| Steep wedge | 5 × 12 × 5 bounding box | 67.380135° |
+
+The long and tall boxes are orientations of the same box; the gentle and steep
+wedges are orientations of the same 5–12–13 triangular prism. Five design units
+equal one rendering unit. Placement snaps to **one design unit**, so both 5-unit
+and 12-unit lengths fit on the same integer lattice.
+
+| Control | Action |
+|---|---|
+| WASD / mouse | Walk / look |
+| Space | Jump; rise in fly mode |
+| Left click / right click | Remove a piece / place a piece |
+| 1–6 or mouse wheel | Select a shape; pieces are unlimited |
+| R | Rotate the next piece 90° horizontally |
+| F | Toggle fly mode (passes through solids) |
+| Left Shift / Left Ctrl | Descend in fly mode / move faster |
+| V | Aerial overview, with flight enabled |
+| T | Return to safe standing room at spawn |
+| Esc / click | Release mouse and pause / resume |
+| Q | Quit |
+
+A green stippled preview marks valid placement; red means occupied, outside the
+building limits, or overlapping your body. Axis-aligned faces attach flush;
+targeting a ramp's slope places the next piece at the top of its bounding box.
+This prototype reserves each piece's **entire bounding box** when building, so
+it does not support inserting a second piece into the empty half of a wedge.
+The foundation is fixed. All three slopes are walkable, including the steep
+67.38° ramp; this is an intentional sandbox movement rule, not realistic friction.
+The world is finite, and edits reset when you restart. There is no saving or
+multiplayer.
+
+```sh
+# GPU screenshot (aerial view by default):
+cargo run --bin diagonal_world -- --capture artifacts/diagonal-world.png
+# First-person screenshot or short native-window smoke test:
+cargo run --bin diagonal_world -- --capture artifacts/diagonal-walk.png --walk-view
+cargo run --bin diagonal_world -- --overview --frames 5
+# Geometry, exact ray hits, stack alignment, movement, and building rules:
+cargo test --test diagonal_gameplay
+```
+
+`src/diagonal/` owns solids, terrain, building, and movement. `diagonal_app.rs`
+handles the native window and input; `diagonal_presentation.rs` supplies the HUD
+and placement preview. Both block demos share `voxel_renderer.rs` and its Metal
+pipeline. No game engine or additional dependencies are required.
 
 ## Block world
 
