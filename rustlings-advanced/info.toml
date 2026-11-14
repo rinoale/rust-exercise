@@ -11,9 +11,10 @@ feedback. Quiz exercises are mixed in to check concepts across several topics.
 final_message = """
 You finished Rustlings Advanced.
 
-You practiced advanced traits, lifetimes, unsafe abstractions, macros, async
-shapes, typestate, decorator and command patterns, web API design, systems-tool
-architecture, and concept quizzes.
+You practiced advanced traits, GATs, lifetimes, HRTB, unsafe abstractions,
+macros, manual futures, async shapes, typestate, decorator and command
+patterns, web API design, systems-tool architecture, layout-aware data, and
+concept quizzes.
 """
 
 [[exercises]]
@@ -25,11 +26,28 @@ can call `to_string`, and the newtype wrapper can sum its inner vector.
 """
 
 [[exercises]]
+name = "associated_gat_views"
+dir = "01_advanced_traits"
+hint = """
+The associated view type is `&'a str`. `get` can use `Vec::get` and
+`String::as_str`. `collect_views` should filter out missing indices while
+preserving borrowed views.
+"""
+
+[[exercises]]
 name = "lifetime_views"
 dir = "02_advanced_lifetimes"
 hint = """
 Store owned text in the cache. Views borrow from `self`, so `view` returns
 `&str` and `split_view` can collect `self.text.split_whitespace()`.
+"""
+
+[[exercises]]
+name = "hrtb_line_transforms"
+dir = "02_advanced_lifetimes"
+hint = """
+The callback works for any borrowed line lifetime. Iterate over `input.lines()`,
+apply the transform, and collect the borrowed outputs.
 """
 
 [[exercises]]
@@ -41,6 +59,15 @@ value out. Keep the public API safe and drop initialized items in `Drop`.
 """
 
 [[exercises]]
+name = "unsafe_split_at_mut"
+dir = "03_unsafe_rust"
+hint = """
+Assert `mid <= len`, take `slice.as_mut_ptr()`, then use
+`slice::from_raw_parts_mut` for `ptr` and `ptr.add(mid)`. The two ranges must
+not overlap.
+"""
+
+[[exercises]]
 name = "macro_json"
 dir = "04_macros"
 hint = """
@@ -49,11 +76,28 @@ The object arm can create a `HashMap` and recursively call `json!` for values.
 """
 
 [[exercises]]
+name = "macro_rules_collections"
+dir = "04_macros"
+hint = """
+Use a base case and recursive arm for `count_exprs!`. Use repetition over
+`$key:expr => $value:expr` pairs to insert into a new `HashMap`.
+"""
+
+[[exercises]]
 name = "async_scraper_plan"
 dir = "05_async"
 hint = """
 Reject zero concurrency, split URLs into chunks of `concurrency_limit`, then
 await the fake client for every URL and collect `Page` values.
+"""
+
+[[exercises]]
+name = "async_manual_future"
+dir = "05_async"
+hint = """
+Use `self.as_mut().get_mut()` because this future is `Unpin`. Return
+`Poll::Ready("done")` at zero; otherwise decrement, wake the task, and return
+`Poll::Pending`.
 """
 
 [[exercises]]
@@ -95,6 +139,15 @@ dir = "10_systems_tools"
 hint = """
 Return the project files from the prompt, parse subcommands from tokens, and
 model status filtering with an enum.
+"""
+
+[[exercises]]
+name = "ffi_repr_packets"
+dir = "10_systems_tools"
+hint = """
+Read and write the two `u8` fields directly. Convert the length with
+`u16::from_le_bytes` and `to_le_bytes`. Return `None` when the packet has fewer
+than four header bytes.
 """
 
 [[exercises]]

@@ -11,9 +11,9 @@ Open the current exercise, read the comments, fill the TODO bodies, then run
 final_message = """
 You finished Rustlings Intermediate.
 
-You practiced generics, traits, lifetimes, closures, iterators, smart pointers,
-threaded word counting, CLI-style parsing, async-shaped code, testing, and
-intermediate concept quizzes.
+You practiced generics, trait bounds, traits, dispatch, lifetimes, closures,
+iterators, smart pointers, shared-state concurrency, CLI-style parsing,
+async-shaped code, testing, and intermediate concept quizzes.
 """
 
 [[exercises]]
@@ -26,12 +26,30 @@ and `len`.
 """
 
 [[exercises]]
+name = "generics_bounds_inventory"
+dir = "01_generics"
+hint = """
+`contains` can delegate to `Vec::contains`. `labels` maps every item through
+`ToString::to_string`. `duplicate_all` can use `to_vec`, and total price can
+sum `Priced::price_cents`.
+"""
+
+[[exercises]]
 name = "traits_shapes"
 dir = "02_traits"
 hint = """
 `Circle` area is `pi * r * r`, perimeter is `2 * pi * r`.
 `Rectangle` area is `width * height`, perimeter is `2 * (width + height)`.
 The summary function can format `shape.area()` and `shape.perimeter()`.
+"""
+
+[[exercises]]
+name = "traits_dispatch_notifications"
+dir = "02_traits"
+hint = """
+`Email` and `Sms` return different channel names and formatted delivery
+strings. Static dispatch calls the generic notifier directly. Dynamic dispatch
+iterates boxed `dyn Notifier` values.
 """
 
 [[exercises]]
@@ -44,11 +62,29 @@ Store the input text as `&'a str`. `word_count` can call `split_whitespace`.
 """
 
 [[exercises]]
+name = "lifetimes_excerpt_picker"
+dir = "03_lifetimes"
+hint = """
+Return slices from the stored `source`. `choose_longer` ties both inputs and the
+output to the same lifetime. The marker in `prefix_before_marker` has its own
+independent lifetime.
+"""
+
+[[exercises]]
 name = "closures_pipeline"
 dir = "04_closures"
 hint = """
 Consume the vector with `into_iter`, filter with the supplied predicate, map
 with the supplied mapper, and reduce with `fold(initial, reducer)`.
+"""
+
+[[exercises]]
+name = "closures_fn_traits"
+dir = "04_closures"
+hint = """
+Call `Fn` once, call the `FnMut` callback three times while updating the value,
+call the `FnOnce` callback with the owned string, and return a `move` closure
+that increments captured state.
 """
 
 [[exercises]]
@@ -61,12 +97,29 @@ and `sum`.
 """
 
 [[exercises]]
+name = "iterators_result_pipeline"
+dir = "05_iterators"
+hint = """
+Use `filter_map` for lossy parsing, `flat_map` for ranges, `try_fold` for a
+fallible sum, and `enumerate` plus `filter` for indexed even numbers.
+"""
+
+[[exercises]]
 name = "smart_pointers_tree"
 dir = "06_smart_pointers"
 hint = """
 `Rc<RefCell<TreeNode>>` lets many parents in the code hold a node handle while
 still mutating child lists. Borrow mutably to push a child, and borrow
 immutably while walking the tree.
+"""
+
+[[exercises]]
+name = "smart_pointers_cow"
+dir = "06_smart_pointers"
+hint = """
+Return `Cow::Borrowed` when the input already matches the desired form. Return
+`Cow::Owned` after trimming, lowercasing, replacing spaces, or appending a
+missing suffix.
 """
 
 [[exercises]]
@@ -79,12 +132,29 @@ the receiver.
 """
 
 [[exercises]]
+name = "concurrency_shared_counter"
+dir = "07_concurrency"
+hint = """
+Wrap the total in `Arc<Mutex<u32>>`, clone the `Arc` into each thread, lock the
+mutex to add each partial sum, then join all handles before reading the total.
+"""
+
+[[exercises]]
 name = "cli_parser"
 dir = "08_cli_libraries"
 hint = """
 Walk the argument list from left to right. Flags with values need to consume the
 next token. A bare token is the input path. Reject unknown flags, repeated input
 paths, missing values, and delimiters that are not exactly one character.
+"""
+
+[[exercises]]
+name = "cli_fromstr_config"
+dir = "08_cli_libraries"
+hint = """
+Implement `FromStr` for `LogLevel` with a lowercase match. Walk the flag list
+with an index, parse retries as `u8`, keep defaults for omitted optional flags,
+and require `--input`.
 """
 
 [[exercises]]
