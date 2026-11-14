@@ -27,6 +27,7 @@ primitive_types5
 primitive_types6
 vecs1
 vecs2
+<<<<<<< HEAD
 move_semantics1
 move_semantics2
 move_semantics3
@@ -37,3 +38,6 @@ structs2
 structs3
 enums1
 enums2
+=======
+move_semantics1
+>>>>>>> featpre/separate_game
