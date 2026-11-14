@@ -45,8 +45,8 @@ cd graphics_lab && cargo run --bin diagonal_world
 ```
 
 A small first-person voxel game with WASD movement, jumping, mouse digging,
-and inventory-based block placement, written in Rust + Metal without a game
-engine. Requires macOS. See [controls and implementation](graphics_lab/README.md#block-world).
+and inventory-based block placement, written in Rust with shared Metal, Direct3D 12, and Vulkan/OpenGL adapters
+without a game engine. Runs on macOS, Windows, and Linux/WSL. See [controls and implementation](graphics_lab/README.md#block-world).
 
 ```bash
 cd graphics_lab && cargo run --bin block_world
@@ -54,7 +54,16 @@ cd graphics_lab && cargo run --bin block_world
 
 ## Graphics Demo
 
-[`graphics_lab`](graphics_lab/README.md) contains a Metal 3D scene and an
+Build all 3D applications on Linux/WSL, macOS, or Windows with Bash:
+
+```bash
+./scripts/build_3d.sh
+```
+
+The Apple assembly and private GPU demos use explicitly labeled portable cube
+rendering modes on other platforms. See [backend selection and architecture](graphics_lab/README.md#graphics-abstraction).
+
+[`graphics_lab`](graphics_lab/README.md) contains a portable 3D scene and an
 experimental native M5 GPU cube renderer using Rust and private IOGPU transport.
 
 ```bash

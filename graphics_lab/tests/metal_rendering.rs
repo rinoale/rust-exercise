@@ -1,5 +1,3 @@
-#![cfg(all(target_os = "macos", feature = "metal-app"))]
-
 use std::{
     fs,
     path::Path,
@@ -15,7 +13,7 @@ fn capture(directory: &Path, name: &str, flags: &[&str]) -> Vec<u8> {
         .args(["--width", "320", "--height", "240"])
         .args(flags)
         .output()
-        .expect("launch Metal renderer");
+        .expect("launch portable renderer");
     assert!(
         output.status.success(),
         "{}",

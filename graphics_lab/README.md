@@ -1,16 +1,107 @@
 # Rust graphics lab and block world
 
-Rust apps explore 3D rendering and a small game without a game engine:
+Rust apps explore 3D rendering and small games without a game engine.
 
-| App | Renderer | Scene |
-|---|---|---|
-| `block_world` | Native Metal API | First-person voxel world with digging and building |
-| `diagonal_world` | Native Metal API | Buildable 5–12–13 world with three real ramp angles |
-| `metal_cube` | Native Metal API | Two rotating textured cubes and a floor |
-| `own_gpu` | Our G17 kernel and Rust executor using private IOGPU transport | One shaded cube, ray traced on the GPU |
+| App | macOS | Windows | Linux / WSL2 |
+|---|---|---|---|
+| `metal_cube` (historical name) | Metal adapter | Direct3D 12 adapter | Vulkan / OpenGL adapter |
+| `block_world` | Metal adapter | Direct3D 12 adapter | Vulkan / OpenGL adapter |
+| `diagonal_world` | Metal adapter | Direct3D 12 adapter | Vulkan / OpenGL adapter |
+| `own_gpu` | Original private Apple AGX experiment | Portable GPU cube | Portable GPU cube |
 
-The native app now renders an image. Its default command opens a window; `--probe`
-is a separate connection diagnostic and deliberately does not render.
+## Build and run on this machine
+
+From the repository root, build **all five 3D app binaries**, including the
+assembly demo's portable mode:
+
+```sh
+./scripts/build_3d.sh
+cargo run --manifest-path graphics_lab/Cargo.toml --bin diagonal_world
+cargo run --manifest-path graphics_lab/Cargo.toml --bin block_world
+cargo run --manifest-path graphics_lab/Cargo.toml --bin metal_cube
+cargo run --manifest-path graphics_lab/Cargo.toml --bin own_gpu
+cargo run --manifest-path assembly_metal_demo/Cargo.toml
+```
+
+The build script accepts Cargo arguments such as `--release`. A Linux build is a
+Linux executable, even under WSL; a native Windows build selects Direct3D 12.
+On Windows, use the two `cargo build --manifest-path ... --bins` commands if Bash
+is unavailable. Linux windows require X11 or Wayland (WSLg supplies both).
+On WSL the apps default to X11 to avoid observed Wayland compositor disconnects
+with small software-rendered windows. Other Linux desktops keep winit's default.
+Set `GRAPHICS_WINDOW_SYSTEM=x11` or `wayland` to override this choice.
+Offscreen `--capture` does not require a window or display server with Vulkan.
+
+At startup the renderer prints the actual graphics backend, device name, and
+device type. CPU adapters such as llvmpipe are accepted, allowing the apps to run
+on WSL even without hardware Vulkan. This is slower than a hardware GPU.
+The current WSL machine has been verified with **software Vulkan**, including
+captures and window presentation. OpenGL capture works here, but OpenGL window presentation failed during
+validation; use Vulkan on this machine.
+
+To select a backend explicitly:
+
+```sh
+GRAPHICS_BACKEND=vulkan cargo run --bin block_world
+GRAPHICS_BACKEND=gl cargo run --bin metal_cube -- --capture artifacts/gl.png
+# Native Windows PowerShell:
+# $env:GRAPHICS_BACKEND = "dx12"
+# cargo run --bin block_world
+```
+
+Allowed choices are `metal` on macOS, `dx12` on Windows, and `vulkan` or `gl` on
+Linux. Unsupported choices fail explicitly. No backend override is necessary
+for normal use.
+
+## Mouse input on WSL
+
+Both world games default to **cursor input** on WSL. This computes motion from
+successive positions inside the window and ignores raw device motion, which can
+contain absolute values through WSLg and spin the camera into the floor.
+The first movement after capture/reentry establishes a reference without turning.
+The pointer stays visible, and the app never warps it back to the center.
+
+Click to play, use WASD to walk, and move the cursor to look. **Arrow keys also
+look around; H levels the view.** Since cursor mode is bounded by the window,
+use arrows to continue turning at an edge, or press Esc, move the pointer back,
+and click to resume. Losing focus clears held keys and releases the pointer.
+
+Normal macOS, Windows, and Linux desktops retain raw mouse input. Override
+with `GRAPHICS_MOUSE_INPUT=cursor` or `GRAPHICS_MOUSE_INPUT=raw` when needed;
+use cursor mode on this WSL installation. An already-running executable must
+be closed and relaunched after rebuilding to pick up the fix.
+
+## Graphics abstraction
+
+`src/graphics/mod.rs` defines **`GraphicsApi`**, the Rust trait equivalent of an
+abstract graphics class. It exposes presentation, RGBA readback, surface size,
+and adapter identity. `Frame` and `DrawCall` carry API-independent mesh data,
+transforms, shading, and depth/wireframe settings.
+
+- `MacAdapter` selects Metal.
+- `WindowsAdapter` selects Direct3D 12.
+- `LinuxAdapter` selects Vulkan/OpenGL, including software adapters on WSL.
+
+All three implement `GraphicsApi` and share a `wgpu` command implementation and
+WGSL shaders. The implementation owns device creation, pipelines, texture
+mipmaps, mesh uploads, resize/reconfiguration, depth attachments, presentation,
+and padded GPU readback. World meshes are retained on the GPU until the world
+revision changes. Wireframe uses line geometry, so it does not require optional
+hardware polygon-mode support.
+
+The app loops use `CubeRenderer` or `VoxelRenderer` through this interface.
+`presentation.rs` contains the shared voxel scene interface and HUD geometry;
+gameplay modules contain no GPU API calls. Original direct Metal renderers are
+retained as reference code under the `metal-app` feature. The three regular apps
+also build with `--no-default-features`.
+
+`own_gpu` on non-macOS and `assembly_metal_demo` on non-Apple-Silicon platforms
+use the shared portable single-cube renderer. They print **Portable GPU mode**:
+these modes do not execute or emulate Apple assembly, G17 machine code, private
+IOGPU calls, or native execution receipts. The original native research paths
+remain available on their supported Macs. Portable modes support `--capture`,
+`--size`, `--angle`, `--frames`, and `--self-test`; Space pauses, arrows rotate,
+R resets, and Esc exits. Native-only diagnostic flags are not portable.
 
 ## Diagonal world
 
@@ -24,7 +115,7 @@ cd graphics_lab
 cargo run --bin diagonal_world
 ```
 
-Requires macOS and Metal, like `block_world`. Click to capture the mouse. Explore
+Runs on macOS, Windows, and Linux/WSL. Click to capture the mouse. Explore
 three colored ramp lanes, a terraced hill, a house with a sloped roof, and a pair
 of equal-height towers: **12 cubes × 5 = 5 boxes × 12 = 60 design units**.
 
@@ -44,7 +135,9 @@ and 12-unit lengths fit on the same integer lattice.
 
 | Control | Action |
 |---|---|
-| WASD / mouse | Walk / look |
+| WASD | Walk |
+| Mouse / arrow keys | Look around |
+| H | Level the camera |
 | Space | Jump; rise in fly mode |
 | Left click / right click | Remove a piece / place a piece |
 | 1–6 or mouse wheel | Select a shape; pieces are unlimited |
@@ -78,16 +171,15 @@ cargo test --test diagonal_gameplay
 
 `src/diagonal/` owns solids, terrain, building, and movement. `diagonal_app.rs`
 handles the native window and input; `diagonal_presentation.rs` supplies the HUD
-and placement preview. Both block demos share `voxel_renderer.rs` and its Metal
-pipeline. No game engine or additional dependencies are required.
+and placement preview. Both block demos share `voxel_renderer.rs` and the platform-independent
+graphics pipeline. No game engine is required.
 
 ## Block world
 
 A small Minecraft-like prototype written in Rust using `winit` for the window and
-input, `glam` for math, and Metal for GPU rendering. No Unity, Unreal, or game
-engine is used. Like `metal_cube`, this app requires **macOS and a Metal GPU**.
-It uses the public Metal API and does not require the specific M5 configuration
-of the separate `own_gpu` experiment.
+input, `glam` for math, and the shared graphics adapters for GPU rendering.
+No Unity, Unreal, or game engine is used. It runs on **macOS, Windows, and
+Linux/WSL**, independently of the separate M5-specific native experiment.
 
 ```sh
 cd graphics_lab
@@ -101,7 +193,8 @@ Switching away from the window also releases the mouse and clears held keys.
 | Control | Action |
 |---|---|
 | W / A / S / D | Walk forward / left / backward / right |
-| Mouse | Look around |
+| Mouse / arrow keys | Look around |
+| H | Level the camera |
 | Space | Jump while standing on a block |
 | Left click | Dig the highlighted block and collect it into inventory |
 | Right click | Use one selected block item to place it against the targeted face |
@@ -128,24 +221,26 @@ reset when you restart. There is no crafting, saving, or infinite terrain yet.
 - `src/voxel.rs`: block grid, exposed-face meshing, exact grid ray traversal,
   inventory actions, and player collision/physics. This logic has no GPU calls.
 - `src/voxel_app.rs`: window, mouse capture, held keys, and the game loop.
-- `src/voxel_renderer.rs` and `src/voxel.metal`: Metal depth rendering, procedural
+- `src/voxel_renderer.rs` and `src/graphics/shader.wgsl`: depth rendering, procedural
   block surfaces, lighting, distance fog, target outline, crosshair, and hotbar.
 
 Only exposed block faces are uploaded. The world mesh is cached and rebuilt
 when digging or placement changes the grid. Physics uses small substeps to
-prevent passing through blocks during slow frames. Rendering waits for each
-frame to finish to keep GPU resource ownership simple for this learning app.
+prevent passing through blocks during slow frames. GPU resource lifetimes are managed by wgpu; captures wait for readback completion.
 
 ```sh
 # Offscreen render and a short real-window smoke test:
 cargo run --bin block_world -- --capture artifacts/block-world.png
 cargo run --bin block_world -- --frames 5
 
-# Game rules/physics and real Metal dig/place image validation:
+# Game rules/physics and GPU API dig/place image validation:
 cargo test --test voxel_gameplay --test voxel_rendering
 ```
 
-## Native GPU cube
+## Native GPU cube (macOS research path)
+
+The rest of this section describes the original macOS-only private AGX path.
+On Windows/Linux the same binary uses the portable mode documented above.
 
 ```sh
 cd graphics_lab
@@ -253,9 +348,9 @@ texture; arrows orbit; + / - zoom; R resets; Esc closes. The floor is drawn last
 so disabling depth creates visible errors. The scene exercises perspective,
 back-face culling, depth, mipmaps, anisotropic filtering, normals, and sRGB output.
 
-Shaders compile at runtime, so full Xcode and the standalone `metal` command are
-not required. The title's submit-and-wait timing includes a CPU wait for GPU
-completion. The two apps use different scenes and rendering techniques and do
+WGSL shaders compile through the selected graphics adapter; full Xcode and the
+standalone `metal` command are not required for the shared renderer. The title's
+submit timing measures CPU submission, not GPU completion. The two apps use different scenes and rendering techniques and do
 not constitute an equivalent-work performance comparison.
 
 ## Driver research tools
@@ -285,6 +380,9 @@ cargo test --no-default-features
 The native integration test executes real GPU work, compares cube silhouettes at
 two angles against an independent double-precision geometric oracle, checks three
 visible face colors, and verifies the arithmetic and execution receipts. Native
-GPU dispatch tests run only on the verified platform. The Metal integration test
-checks real GPU images with depth, texture, wireframe, and animation controls.
+GPU dispatch tests run only on the verified platform. The portable integration tests
+check rendered images with depth, texture, wireframe, animation, world edits,
+camera changes, resize, and unaligned readback rows. Software Vulkan is valid
+for these tests. Windows cross-compilation checks do not substitute for a
+native Windows or macOS runtime test.
 Generated captures, traces, and research checkouts under `artifacts/` are ignored.

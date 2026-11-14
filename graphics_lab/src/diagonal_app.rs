@@ -1,28 +1,20 @@
 //! Native window and controls for the diagonal-world sandbox.
+use crate::mouse_look::MouseLook;
 use crate::{
     diagonal::{Game, Shape},
     voxel::Input,
     voxel_renderer::VoxelRenderer,
 };
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use clap::Parser;
-use core_graphics_types::geometry::CGSize;
-use metal::MetalLayer;
-use objc::{
-    msg_send,
-    rc::autoreleasepool,
-    runtime::{Object, YES},
-    sel, sel_impl,
-};
 use std::{collections::HashSet, path::PathBuf, time::Instant};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     event::{DeviceEvent, DeviceId, ElementState, MouseButton, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow},
     keyboard::{KeyCode, PhysicalKey},
-    raw_window_handle::{HasWindowHandle, RawWindowHandle},
-    window::{CursorGrabMode, Window, WindowId},
+    window::{Window, WindowId},
 };
 
 #[derive(Parser)]
@@ -51,14 +43,12 @@ pub fn run() -> Result<()> {
         game.player.overview();
     }
     if let Some(path) = &options.capture {
-        return autoreleasepool(|| {
-            VoxelRenderer::new()?.capture(&game, options.width, options.height, path)
-        });
+        return VoxelRenderer::new()?.capture(&game, options.width, options.height, path);
     }
     println!(
-        "Click to capture mouse | WASD walk | Mouse look | Space jump | Left dig | Right place | 1-6 / wheel select | R rotate | F fly | V overview | T respawn | Esc release | Q quit"
+        "Click to capture mouse | WASD walk | Mouse / arrows look | H level view | Space jump | Left dig | Right place | 1-6 / wheel select | R rotate | F fly | V overview | T respawn | Esc release | Q quit"
     );
-    let event_loop = EventLoop::new()?;
+    let event_loop = crate::graphics::event_loop()?;
     event_loop.set_control_flow(ControlFlow::Wait);
     let mut app = App {
         options,
@@ -66,6 +56,7 @@ pub fn run() -> Result<()> {
         surface: None,
         keys: HashSet::new(),
         captured: false,
+        mouse_look: MouseLook::from_environment()?,
         last_frame: Instant::now(),
         total_frames: 0,
         error: None,
@@ -76,44 +67,22 @@ pub fn run() -> Result<()> {
     }
     Ok(())
 }
-// Drop GPU resources before the NSView/window they are attached to.
+// The renderer retains the window while its swapchain is alive.
 struct Surface {
     renderer: VoxelRenderer,
-    layer: MetalLayer,
-    window: Window,
+    window: std::sync::Arc<Window>,
 }
 impl Surface {
     fn new(event_loop: &ActiveEventLoop, width: u32, height: u32) -> Result<Self> {
-        let window = event_loop.create_window(
-            Window::default_attributes()
-                .with_title("Diagonal World | Click to play")
-                .with_inner_size(PhysicalSize::new(width, height)),
-        )?;
-        let renderer = VoxelRenderer::new()?;
-        let mut layer = MetalLayer::new();
-        layer.set_device(&renderer.device);
-        layer.set_pixel_format(metal::MTLPixelFormat::BGRA8Unorm_sRGB);
-        layer.set_presents_with_transaction(false);
-        layer.set_display_sync_enabled(true);
-        layer.set_opaque(true);
-        layer.set_contents_scale(window.scale_factor());
-        let RawWindowHandle::AppKit(handle) = window.window_handle()?.as_raw() else {
-            return Err(anyhow!("Expected AppKit window"));
-        };
-        // winit owns a live NSView on this main thread; AppKit retains the layer.
-        unsafe {
-            let view = handle.ns_view.as_ptr().cast::<Object>();
-            let _: () = msg_send![view, setWantsLayer: YES];
-            let pointer: *mut Object = (&mut *layer as *mut metal::MetalLayerRef).cast();
-            let _: () = msg_send![view, setLayer: pointer];
-        }
-        let size = window.inner_size();
-        layer.set_drawable_size(CGSize::new(size.width as f64, size.height as f64));
-        Ok(Self {
-            renderer,
-            layer,
-            window,
-        })
+        let window = std::sync::Arc::new(
+            event_loop.create_window(
+                Window::default_attributes()
+                    .with_title("Diagonal World | Click to play")
+                    .with_inner_size(PhysicalSize::new(width, height)),
+            )?,
+        );
+        let renderer = VoxelRenderer::for_window(window.clone())?;
+        Ok(Self { renderer, window })
     }
 }
 struct App {
@@ -122,6 +91,7 @@ struct App {
     surface: Option<Surface>,
     keys: HashSet<KeyCode>,
     captured: bool,
+    mouse_look: MouseLook,
     last_frame: Instant,
     total_frames: u64,
     error: Option<anyhow::Error>,
@@ -136,18 +106,13 @@ impl App {
             return;
         };
         if capture {
-            if let Err(error) = surface
-                .window
-                .set_cursor_grab(CursorGrabMode::Locked)
-                .or_else(|_| surface.window.set_cursor_grab(CursorGrabMode::Confined))
-            {
+            if let Err(error) = self.mouse_look.capture(&surface.window) {
                 eprintln!("Could not capture mouse: {error}");
                 return;
             }
         } else {
-            let _ = surface.window.set_cursor_grab(CursorGrabMode::None);
+            self.mouse_look.release(&surface.window);
         }
-        surface.window.set_cursor_visible(!capture);
         self.captured = capture;
         self.keys.clear();
         self.last_frame = Instant::now();
@@ -158,6 +123,12 @@ impl App {
         self.last_frame = now;
         if self.captured {
             let down = |key| f32::from(self.keys.contains(&key));
+            // Match the existing 0.0025 radians/pixel mouse sensitivity:
+            // 600 pixels/sec gives keyboard look at 1.5 radians/sec.
+            self.game.player.look(
+                f64::from((down(KeyCode::ArrowRight) - down(KeyCode::ArrowLeft)) * dt * 600.),
+                f64::from((down(KeyCode::ArrowDown) - down(KeyCode::ArrowUp)) * dt * 600.),
+            );
             let input = Input {
                 forward: down(KeyCode::KeyW) - down(KeyCode::KeyS),
                 right: down(KeyCode::KeyD) - down(KeyCode::KeyA),
@@ -177,16 +148,7 @@ impl App {
         if size.width == 0 || size.height == 0 || surface.window.is_minimized() == Some(true) {
             return Ok(());
         }
-        let Some(drawable) = surface.layer.next_drawable() else {
-            return Ok(());
-        };
-        surface.window.pre_present_notify();
-        surface.renderer.render(
-            &self.game,
-            drawable.texture(),
-            Some(drawable),
-            self.captured,
-        )?;
+        surface.renderer.render(&self.game, self.captured)?;
         surface.window.set_title(&format!(
             "Diagonal World | {} | Rotation {} | Left remove / Right build | {}",
             Shape::ALL[self.game.selected].name(),
@@ -208,9 +170,7 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.surface.is_none() {
-            match autoreleasepool(|| {
-                Surface::new(event_loop, self.options.width, self.options.height)
-            }) {
+            match Surface::new(event_loop, self.options.width, self.options.height) {
                 Ok(surface) => {
                     surface.window.request_redraw();
                     self.surface = Some(surface);
@@ -223,6 +183,7 @@ impl ApplicationHandler for App {
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, event: DeviceEvent) {
         if self.captured
             && let DeviceEvent::MouseMotion { delta } = event
+            && let Some(delta) = self.mouse_look.raw_motion(delta)
         {
             self.game.player.look(delta.0, delta.1);
         }
@@ -231,18 +192,19 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Focused(false) => self.capture_mouse(false),
-            WindowEvent::Resized(size) => {
-                if let Some(surface) = &self.surface {
-                    surface
-                        .layer
-                        .set_drawable_size(CGSize::new(size.width as f64, size.height as f64));
+            WindowEvent::CursorMoved { position, .. } if self.captured => {
+                if let Some(surface) = &self.surface
+                    && let Some((dx, dy)) = self
+                        .mouse_look
+                        .cursor_motion(position, surface.window.inner_size())
+                {
+                    self.game.player.look(dx, dy);
                 }
             }
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                if let Some(surface) = &self.surface {
-                    surface.layer.set_contents_scale(scale_factor);
-                }
-            }
+            WindowEvent::CursorLeft { .. }
+            | WindowEvent::Resized(_)
+            | WindowEvent::Moved(_)
+            | WindowEvent::ScaleFactorChanged { .. } => self.mouse_look.reset_reference(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if let PhysicalKey::Code(key) = event.physical_key {
                     if event.state == ElementState::Released {
@@ -252,6 +214,7 @@ impl ApplicationHandler for App {
                             KeyCode::Escape => self.capture_mouse(false),
                             KeyCode::KeyQ => event_loop.exit(),
                             _ if !self.captured => (),
+                            KeyCode::KeyH => self.game.player.pitch = 0.,
                             KeyCode::Space => {
                                 self.game.player.jump();
                                 self.keys.insert(key);
@@ -313,7 +276,7 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                if let Err(error) = autoreleasepool(|| self.redraw(event_loop)) {
+                if let Err(error) = self.redraw(event_loop) {
                     self.fail(event_loop, error);
                 }
             }

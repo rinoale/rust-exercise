@@ -72,7 +72,7 @@ impl Piece {
     }
     pub fn size(&self) -> Vec3 {
         let d = self.shape.dimensions().as_vec3() / 5.0;
-        if self.rotation % 2 == 0 {
+        if self.rotation.is_multiple_of(2) {
             d
         } else {
             Vec3::new(d.z, d.y, d.x)

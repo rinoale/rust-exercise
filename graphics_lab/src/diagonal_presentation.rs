@@ -1,7 +1,7 @@
 use crate::{
     diagonal::{Game, Shape},
+    presentation::{Hud, RenderScene},
     voxel::VoxelVertex,
-    voxel_renderer::{Hud, RenderScene},
 };
 use glam::{Mat4, Vec3};
 
@@ -113,9 +113,9 @@ impl RenderScene for Game {
         hud.rect(16., h - 39., w - 32., 23., dark);
         hud.text(
             if captured {
-                "WASD MOVE   LEFT REMOVE   RIGHT BUILD   1-6 SELECT   ESC RELEASE"
+                "WASD MOVE   MOUSE/ARROWS LOOK   H LEVEL VIEW   ESC RELEASE"
             } else {
-                "CLICK TO PLAY   WASD MOVE   MOUSE LOOK   ESC RELEASE   Q QUIT"
+                "CLICK TO PLAY   WASD MOVE   MOUSE/ARROWS LOOK   H LEVEL   Q QUIT"
             },
             28.,
             h - 31.,

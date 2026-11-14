@@ -4,6 +4,30 @@ A rotating, colored 3D cube with perspective and depth testing. Rust manages
 an ordinary macOS window and calls an ARM64 assembly library. The assembly
 makes every Metal rendering call, including presentation through CAMetalLayer.
 
+## Portable build on Windows and Linux / WSL
+
+```sh
+cargo build --workspace --all-targets
+cargo run -- --frames 5
+cargo run -- --capture /tmp/portable-cube.png
+cargo run -- --self-test
+```
+
+On platforms other than Apple Silicon macOS, the 3D executable uses
+`graphics_lab`'s `GraphicsApi` trait and platform adapters: Direct3D 12 on
+Windows, Vulkan/OpenGL on Linux, and Metal on Intel macOS. This draws a rotating
+colored cube with depth testing through real graphics API calls. It explicitly
+prints **Portable GPU mode** and does not execute the ARM64 assembly. It supports
+`--size`, `--angle`, `--capture`, and `--frames`; Space pauses, arrows rotate,
+R resets, and Esc exits. The shared cube has its own camera and lighting, so it
+is not a pixel-identical reproduction of the assembly renderer.
+
+The `metal_asm` package also builds on these platforms, but its native cube
+module is only exposed on Apple Silicon macOS. The separate `vector_add`
+compute experiment returns `UnsupportedPlatform` for nonempty input elsewhere;
+it does not silently substitute CPU arithmetic. GPU assembly tests remain
+platform-gated. The rest of this document describes the original native path.
+
 ## Run
 
 Requires an Apple Silicon Mac, a native ARM64 Rust toolchain, and Xcode Command

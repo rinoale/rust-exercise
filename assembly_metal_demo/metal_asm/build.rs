@@ -12,11 +12,11 @@ fn run(command: &mut Command) {
 }
 
 fn main() {
-    assert!(
-        env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos")
-            && env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("aarch64"),
-        "This example requires ARM64 macOS (Apple Silicon)."
-    );
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos")
+        || env::var("CARGO_CFG_TARGET_ARCH").as_deref() != Ok("aarch64")
+    {
+        return;
+    }
     let native = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("native");
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let archive = output.join("libmetal_asm.a");

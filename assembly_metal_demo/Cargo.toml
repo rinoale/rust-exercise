@@ -10,4 +10,8 @@ members = ["metal_asm"]
 [dependencies]
 metal_asm = { path = "metal_asm" }
 png = "0.17"
-winit = { version = "0.30", default-features = false, features = ["rwh_06"] }
+winit = { version = "0.30", features = ["rwh_06"] }
+anyhow = "1"
+
+[target.'cfg(not(all(target_os = "macos", target_arch = "aarch64")))'.dependencies]
+graphics_lab = { path = "../graphics_lab", default-features = false }

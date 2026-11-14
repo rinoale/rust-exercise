@@ -1,9 +1,11 @@
 //! Rust interfaces to Metal graphics and compute implemented in ARM64 assembly.
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub mod cube;
 
 use std::fmt;
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 unsafe extern "C" {
     fn asm_metal_add(a: *const u32, b: *const u32, output: *mut u32, count: usize) -> i32;
 }
@@ -13,11 +15,15 @@ pub enum Error {
     DifferentLengths,
     TooManyElements,
     MetalStage(i32),
+    UnsupportedPlatform,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::UnsupportedPlatform => {
+                write!(f, "ARM64 Metal compute requires Apple Silicon macOS")
+            }
             Self::DifferentLengths => write!(f, "Input vectors must have equal lengths"),
             Self::TooManyElements => {
                 write!(f, "Input vectors exceed the supported byte/index range")
@@ -56,20 +62,33 @@ pub fn add_u32(a: &[u32], b: &[u32]) -> Result<Vec<u32>, Error> {
     if a.len() > u32::MAX as usize || a.len().checked_mul(size_of::<u32>()).is_none() {
         return Err(Error::TooManyElements);
     }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     let mut result = vec![0; a.len()];
-    // SAFETY: All pointers refer to live, correctly sized u32 allocations. The
-    // output is disjoint from the inputs; assembly waits before returning.
-    let status = unsafe { asm_metal_add(a.as_ptr(), b.as_ptr(), result.as_mut_ptr(), a.len()) };
-    if status != 0 {
-        return Err(Error::MetalStage(status));
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        // SAFETY: All pointers refer to live, correctly sized u32 allocations. The
+        // output is disjoint from the inputs; assembly waits before returning.
+        let status = unsafe { asm_metal_add(a.as_ptr(), b.as_ptr(), result.as_mut_ptr(), a.len()) };
+        if status != 0 {
+            return Err(Error::MetalStage(status));
+        }
+        Ok(result)
     }
-    Ok(result)
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    {
+        if a.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Err(Error::UnsupportedPlatform)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[test]
     fn gpu_add_handles_partial_threadgroups_and_unsigned_overflow() {
         for length in [1, 7, 1031] {

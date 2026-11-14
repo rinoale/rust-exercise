@@ -1,30 +1,21 @@
 use std::{path::PathBuf, time::Instant};
 
-use anyhow::{Result, anyhow, ensure};
+use anyhow::{Result, ensure};
 use clap::Parser;
-use core_graphics_types::geometry::CGSize;
-use metal::MetalLayer;
-use objc::{
-    msg_send,
-    rc::autoreleasepool,
-    runtime::{Object, YES},
-    sel, sel_impl,
-};
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     event::{ElementState, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow},
     keyboard::{KeyCode, PhysicalKey},
-    raw_window_handle::{HasWindowHandle, RawWindowHandle},
     window::{Window, WindowId},
 };
 
-use crate::{metal_renderer::MetalRenderer, scene::Scene};
+use crate::{cube_renderer::CubeRenderer, scene::Scene};
 
 #[derive(Parser)]
 #[command(
-    about = "Native Metal: two checkerboard cubes, perspective, lighting, and a depth-tested floor"
+    about = "Portable GPU: two checkerboard cubes, perspective, lighting, and a depth-tested floor"
 )]
 struct Options {
     /// Render a deterministic PNG offscreen, without opening a window.
@@ -59,14 +50,12 @@ pub fn run() -> Result<()> {
         ..Scene::default()
     };
     if let Some(path) = &options.capture {
-        return autoreleasepool(|| {
-            MetalRenderer::new()?.capture(&scene, options.width, options.height, path)
-        });
+        return CubeRenderer::new()?.capture(&scene, options.width, options.height, path);
     }
     println!(
         "Space pause | W wireframe | D depth | T texture | arrows orbit | +/- zoom | R reset | Esc quit"
     );
-    let event_loop = EventLoop::new()?;
+    let event_loop = crate::graphics::event_loop()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
         options,
@@ -86,45 +75,23 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-// Fields drop in declaration order: detach the renderer/layer before the window.
+// The renderer retains the window while its swapchain is alive.
 struct Surface {
-    renderer: MetalRenderer,
-    layer: MetalLayer,
-    window: Window,
+    renderer: CubeRenderer,
+    window: std::sync::Arc<Window>,
 }
 
 impl Surface {
     fn new(event_loop: &ActiveEventLoop, width: u32, height: u32) -> Result<Self> {
-        let window = event_loop.create_window(
-            Window::default_attributes()
-                .with_title("Metal / 3D graphics lab")
-                .with_inner_size(PhysicalSize::new(width, height)),
-        )?;
-        let renderer = MetalRenderer::new()?;
-        let mut layer = MetalLayer::new();
-        layer.set_device(&renderer.device);
-        layer.set_pixel_format(metal::MTLPixelFormat::BGRA8Unorm_sRGB);
-        layer.set_presents_with_transaction(false);
-        layer.set_display_sync_enabled(true);
-        layer.set_opaque(true);
-        layer.set_contents_scale(window.scale_factor());
-        let RawWindowHandle::AppKit(handle) = window.window_handle()?.as_raw() else {
-            return Err(anyhow!("Expected an AppKit window"));
-        };
-        // winit supplies a live NSView on the main thread. AppKit retains its layer.
-        unsafe {
-            let view = handle.ns_view.as_ptr().cast::<Object>();
-            let _: () = msg_send![view, setWantsLayer: YES];
-            let layer_pointer: *mut Object = (&mut *layer as *mut metal::MetalLayerRef).cast();
-            let _: () = msg_send![view, setLayer: layer_pointer];
-        }
-        let size = window.inner_size();
-        layer.set_drawable_size(CGSize::new(size.width as f64, size.height as f64));
-        Ok(Self {
-            renderer,
-            layer,
-            window,
-        })
+        let window = std::sync::Arc::new(
+            event_loop.create_window(
+                Window::default_attributes()
+                    .with_title("3D graphics lab")
+                    .with_inner_size(PhysicalSize::new(width, height)),
+            )?,
+        );
+        let renderer = CubeRenderer::for_window(window.clone())?;
+        Ok(Self { renderer, window })
     }
 }
 
@@ -158,21 +125,15 @@ impl App {
         if size.width == 0 || size.height == 0 || surface.window.is_minimized() == Some(true) {
             return Ok(());
         }
-        let Some(drawable) = surface.layer.next_drawable() else {
-            return Ok(());
-        };
         let start = Instant::now();
-        surface.window.pre_present_notify();
-        surface
-            .renderer
-            .render(&self.scene, drawable.texture(), Some(drawable))?;
+        surface.renderer.render(&self.scene)?;
         self.frame_ms += start.elapsed().as_secs_f64() * 1000.0;
         self.total_frames += 1;
         self.stats_frames += 1;
         if self.stats_start.elapsed().as_secs_f64() >= 0.5 {
             let fps = self.stats_frames as f64 / self.stats_start.elapsed().as_secs_f64();
             surface.window.set_title(&format!(
-                "Metal | {fps:.0} fps | {:.2} ms submit+wait | depth {} | texture {} | W wireframe · Space pause",
+                "GPU | {fps:.0} fps | {:.2} ms submit | depth {} | texture {} | W wireframe · Space pause",
                 self.frame_ms / self.stats_frames as f64,
                 if self.scene.depth_test { "on" } else { "off" },
                 if self.scene.textured { "on" } else { "off" },
@@ -192,9 +153,7 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.surface.is_none() {
-            match autoreleasepool(|| {
-                Surface::new(event_loop, self.options.width, self.options.height)
-            }) {
+            match Surface::new(event_loop, self.options.width, self.options.height) {
                 Ok(surface) => {
                     self.surface = Some(surface);
                     self.last_frame = Instant::now();
@@ -207,18 +166,6 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => {
-                if let Some(surface) = &self.surface {
-                    surface
-                        .layer
-                        .set_drawable_size(CGSize::new(size.width as f64, size.height as f64));
-                }
-            }
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                if let Some(surface) = &self.surface {
-                    surface.layer.set_contents_scale(scale_factor);
-                }
-            }
             WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
                 if let PhysicalKey::Code(key) = event.physical_key {
                     match key {
@@ -251,7 +198,7 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                if let Err(error) = autoreleasepool(|| self.redraw(event_loop)) {
+                if let Err(error) = self.redraw(event_loop) {
                     self.fail(event_loop, error);
                 }
             }
